@@ -1,5 +1,14 @@
 # Changelog
 
+## Track the offline role labels (2026-10-27)
+
+- `data/labels/role_labels.jsonl` is now in the repo (a `.gitignore` exception). It holds the 51
+  offline decisions for records the PH1-ROLE-001 rules could not decide. Each entry has an ID,
+  a content hash, a role, flags and a one-line reason; there is no notebook text.
+- Without the file, a fresh clone left those 51 records "unknown". It built 856 concept chunks
+  and 2,168 vectors instead of 862 and 2,174.
+- The rest of `data/`, including the raw notebooks, stays local.
+
 ## phase3-v1 — PH3-EMBED-001 (issue #5): embeddings and dense vector index (2026-10-27)
 
 - New modules:

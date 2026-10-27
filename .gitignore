@@ -4,5 +4,8 @@ __pycache__/
 # data/ stays local (raw notebooks, chunks); only the topic catalog is tracked
 data/*
 !data/topic_catalog.json
+# Offline role labels (PH1-ROLE-001): ids, content hashes, roles and one-line reasons; no notebook text.
+# Tracked so every machine classifies the 51 rule-undecided records the same way.
+!data/labels/
 index/
 adapters/
