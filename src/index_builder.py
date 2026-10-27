@@ -360,6 +360,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     index = None if (args.dry_run and not Path(args.index_path).exists()) else QdrantIndex(cfg.collection, args.index_path)
 
     if args.spot_check:
+        if index is None or not index.exists() or index.count() == 0:
+            raise RuntimeError(f"collection {cfg.collection} not found or empty at {args.index_path}; "
+                               "build it first: python src/index_builder.py")
         out = config.PROCESSED_DIR / SPOT_CHECK_MD
         out.write_text(spot_check(index, OpenAIEmbedder(cfg), cfg), encoding="utf-8", newline="\n")
         print(f"wrote {out}")

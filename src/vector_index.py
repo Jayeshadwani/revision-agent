@@ -40,6 +40,7 @@ def point_id(chunk_id: str) -> str:
 class VectorIndex(Protocol):
     collection: str
 
+    def exists(self) -> bool: ...
     def ensure_collection(self, dimensions: int, distance: str) -> None: ...
     def create_payload_indexes(self) -> list[str]: ...
     def payload_indexes(self) -> list[str]: ...
@@ -74,6 +75,9 @@ class MemoryIndex:
         self._dims: Optional[int] = None
         self._distance: Optional[str] = None
         self._indexes: set[str] = set()
+
+    def exists(self) -> bool:
+        return self._dims is not None
 
     def ensure_collection(self, dimensions: int, distance: str) -> None:
         if self._dims is not None and (self._dims, self._distance) != (dimensions, distance):
@@ -144,7 +148,7 @@ class QdrantIndex:
         self._declared: set[str] = set()
 
     # collection ---------------------------------------------------------------
-    def _exists(self) -> bool:
+    def exists(self) -> bool:
         if hasattr(self.client, "collection_exists"):
             return self.client.collection_exists(self.collection)
         return self.collection in {c.name for c in self.client.get_collections().collections}
@@ -152,7 +156,7 @@ class QdrantIndex:
     def ensure_collection(self, dimensions: int, distance: str) -> None:
         m = self.models
         dist = {"cosine": m.Distance.COSINE, "dot": m.Distance.DOT, "euclid": m.Distance.EUCLID}[distance]
-        if not self._exists():
+        if not self.exists():
             self.client.create_collection(self.collection, vectors_config=m.VectorParams(size=dimensions, distance=dist))
             return
         params = self.client.get_collection(self.collection).config.params.vectors
@@ -163,8 +167,13 @@ class QdrantIndex:
     def create_payload_indexes(self) -> list[str]:
         m = self.models
         kinds = {"keyword": m.PayloadSchemaType.KEYWORD, "bool": m.PayloadSchemaType.BOOL}
+        import warnings
         for field, kind in PAYLOAD_INDEXES.items():
-            self.client.create_payload_index(self.collection, field_name=field, field_schema=kinds[kind])
+            with warnings.catch_warnings():
+                # Local mode warns that payload indexes have no effect there (it filters by scanning);
+                # they are declared anyway so the same collection works on a Qdrant server.
+                warnings.filterwarnings("ignore", message="Payload indexes have no effect")
+                self.client.create_payload_index(self.collection, field_name=field, field_schema=kinds[kind])
             self._declared.add(field)
         return self.payload_indexes()
 
@@ -223,6 +232,6 @@ class QdrantIndex:
         return [(h.score, h.payload) for h in hits]
 
     def drop(self) -> None:
-        if self._exists():
+        if self.exists():
             self.client.delete_collection(self.collection)
         self._declared.clear()

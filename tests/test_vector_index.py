@@ -108,6 +108,12 @@ class IndexContract:
         self.assertEqual(len(r["embedded"]), 5)
         self.assertEqual({p["embedding_model"] for p in self.index.payloads().values()}, {"other-model"})
 
+    def test_exists(self):
+        fresh = self.make_index("revision_agent_missing")
+        self.assertFalse(fresh.exists())
+        self.sync(corpus())
+        self.assertTrue(self.index.exists())
+
     def test_new_version_means_new_collection(self):
         v2 = em.EmbeddingConfig(dimensions=CFG.dimensions, embedding_version="v2")
         self.assertNotEqual(v2.collection, CFG.collection)
