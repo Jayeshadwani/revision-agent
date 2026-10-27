@@ -9,7 +9,7 @@ There are two files, both in the same `v1` schema, one JSON object per line:
 
 Each record is a realistic user prompt, such as "Explain precision and recall" or "I'm revising KMeans, what next?". The golden set is the first reviewed batch: 15 topic prompts plus boundary cases `B01`–`B05`. The retrieval set holds the other topic prompts (`T01-01` … `T40-08`) and boundary cases `B06`–`B20`. A prompt moves from the retrieval set to the golden set once its answer key and sources are verified.
 
-Prompts can point at the three kinds of corpus assets: concept chunks (`expected_chunk_ids`, once chunking exists), tools (`expected_tool_ids`, `TOOL_0001`…) and resources (`expected_resource_ids`, `RES_0001`…). Tools and resources are built locally by `src/assets.py`; their IDs are stable as long as the notebooks don't change.
+Prompts can point at the three kinds of corpus assets: concept chunks (`expected_chunk_ids`, once chunking exists), tools (`expected_tool_ids`, `TOOL_0001`…) and resources (`expected_resource_ids`, `RES_0001`…). Tools and resources are built locally by `src/assets.py` (issue #1). IDs are numbered in corpus order, so they stay stable while the notebooks and content roles don't change; a change in which cells are tools renumbers them, and the references here must be migrated (by source cell).
 
 [`response_templates.md`](response_templates.md) defines how the agent must format each answer and how answers are scored.
 

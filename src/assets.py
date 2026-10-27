@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
 """
-Phase 1.5: build the Tools and Resources inventories from the Phase 1 cell records.
+Phase 1.5: shared code/image helpers and the entry point for the Tools and Resources inventories.
 
     Concepts explain.  Tools demonstrate.  Resources illustrate.  Prompts ask.
 
 Usage (from the project root, after `python src/ingestion.py`):
     python src/assets.py
 
-Reads data/processed/cells.jsonl, the raw notebooks (for embedded images) and the topic
-catalog. Writes, in data/processed/:
-    tools.jsonl       one record per non-empty code cell, classified by tool_type
-    resources.jsonl   one record per image: markdown images and plot outputs
-    images/           embedded images extracted as files (external images are not downloaded)
+Runs, in order:
+    src/tools_inventory.py       -> tools.jsonl, tool_exclusions.jsonl
+    src/resources_inventory.py   -> resources.jsonl, resources_report.md, images/
+    src/tool_concept_linker.py   -> tool_concept_links.jsonl
+and writes tools_report.md (tools + links).
 
-Everything is rule-based and deterministic. Titles and descriptions come from headings,
-comments and nearby markdown; an LLM can normalize them later. Image content is not read:
-every meaningful resource is marked `requires_vision_model` until it is captioned.
+The helpers here (code parsing, `classify_tool`, image parsing, topic mapping) are shared by those
+modules and by src/content_role_classifier.py. Everything is rule-based and deterministic; image
+content is never read.
 """
 from __future__ import annotations
 
 import ast
-import base64
 import builtins
-import json
 import re
 import struct
 import sys
@@ -31,116 +29,20 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Literal, Optional
 
-from pydantic import BaseModel
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import config  # noqa: E402
 from ingestion import candidate_key, content_words  # noqa: E402
-from notebook_parser import CellRecord, read_notebook, to_text  # noqa: E402
+from notebook_parser import CellRecord  # noqa: E402
 
-TOOLS_JSONL = "tools.jsonl"
-RESOURCES_JSONL = "resources.jsonl"
-IMAGES_DIR = "images"
+TOOLS_REPORT_MD = "tools_report.md"
 
 ToolType = Literal[
     "implementation", "demonstration", "function", "workflow", "visualization",
     "data_loading", "environment_setup", "debugging", "non_teaching",
 ]
-# Tool types that may be shown for "show me code" answers in v1
+# Raw tool types from `classify_tool`; content_role_classifier maps them to content roles.
 ANSWER_ELIGIBLE = {"implementation", "demonstration", "function", "workflow", "visualization"}
-
-ResourceType = Literal[
-    "plot", "diagram", "formula_image", "worked_example", "screenshot", "decorative",
-    "external_reference", "unclassified",
-]
-
-
-# ----------------------------------------------------------------------------
-# Schemas
-# ----------------------------------------------------------------------------
-class Source(BaseModel):
-    notebook_id: str
-    notebook_title: str
-    section_path: str
-    cell_ids: list[int]
-
-
-class ToolQuality(BaseModel):
-    is_teaching_code: bool
-    is_self_contained: bool
-    has_output: bool
-    has_error_output: bool
-    has_explanation_nearby: bool
-    complexity: Literal["low", "medium", "high"]
-    execution_status: str = "not_executed"      # the pipeline never runs notebook code
-    suitable_for_answer: bool
-
-
-class Tool(BaseModel):
-    tool_id: str
-    cell_id: str
-    title: str
-    description: str
-    tool_type: ToolType
-    language: str = "python"
-    libraries: list[str]
-    code: str
-    purpose: str
-    inputs: list[str]
-    outputs: list[str]
-    concepts: list[str]
-    topic_ids: list[str]
-    source: Source
-    quality: ToolQuality
-    tags: list[str]
-    created_at: str
-
-
-class ImageReference(BaseModel):
-    location: Literal["embedded", "google_drive", "url"]
-    url: Optional[str]
-    local_path: Optional[str]
-    format: Optional[str]
-    width: Optional[int] = None
-    height: Optional[int] = None
-    bytes: Optional[int] = None
-
-
-class Caption(BaseModel):
-    source: Literal["alt_text", "nearby_markdown", "none"]
-    text: str
-
-
-class ResourceQuality(BaseModel):
-    is_meaningful: bool
-    is_decorative: bool
-    contains_formula: Optional[bool]          # None = unknown until a vision model has looked at it
-    contains_diagram: Optional[bool]
-    contains_worked_example: Optional[bool]
-    requires_vision_model: bool
-
-
-class Resource(BaseModel):
-    resource_id: str
-    cell_id: str
-    title: str
-    description: str
-    resource_type: ResourceType
-    modality: str = "image"
-    availability: Literal["embedded", "external_unavailable"]
-    source: Source
-    image_reference: ImageReference
-    caption: Caption
-    extracted_text: Optional[str] = None
-    vlm_caption: Optional[str] = None
-    ocr_text: Optional[str] = None
-    concepts: list[str]
-    topic_ids: list[str]
-    linked_tool_ids: list[str]
-    retrieval_status: Literal["excluded_from_v1", "unavailable", "excluded_decorative"]
-    quality: ResourceQuality
-    created_at: str
 
 
 # ----------------------------------------------------------------------------
@@ -367,70 +269,6 @@ VERB = {
 }
 
 
-def build_tools(cells: list[CellRecord], mapper: TopicMapper) -> list[Tool]:
-    by_nb: dict[str, list[CellRecord]] = defaultdict(list)
-    for c in cells:
-        by_nb[c.notebook_id].append(c)
-    tools: list[Tool] = []
-    for nb_cells in by_nb.values():
-        trees = {c.cell_id: parseable(c.content) for c in nb_cells if c.cell_type == "code" and not c.is_empty}
-        dependencies = notebook_symbols(list(trees.values()))
-        for i, cell in enumerate(nb_cells):
-            if cell.cell_type != "code" or cell.is_empty:
-                continue
-            tree = trees[cell.cell_id]
-            tool_type = classify_tool(cell, tree)
-            inputs, outputs, self_contained = names_io(tree, dependencies)
-
-            # Nearest explanation: up to 3 cells back, same section, non-trivial markdown
-            explanation = ""
-            for prev in reversed(nb_cells[max(0, i - 3):i]):
-                if prev.cell_type == "markdown" and prev.section_path == cell.section_path \
-                        and len(plain_text(prev.content)) >= 40:
-                    explanation = first_sentences(prev.content)
-                    break
-
-            funcs = [n.name for n in (tree.body if tree else []) if isinstance(n, (ast.FunctionDef, ast.ClassDef))]
-            title = (humanize(funcs[0]).capitalize() if funcs else "") or first_comment(cell.content) or cell.section
-            n_lines = len(code_lines(cell.content))
-            complexity = "low" if n_lines <= 5 else "medium" if n_lines <= 20 else "high"
-            has_error = any(o.content_type == "error" for o in cell.outputs)
-            teaching = tool_type in ANSWER_ELIGIBLE
-            context = " ".join(cell.section_path + [title] + funcs + cell.libraries)
-            tools.append(Tool(
-                tool_id="",                                         # numbered below
-                cell_id=cell.cell_id,
-                title=title,
-                description=explanation,
-                tool_type=tool_type,
-                libraries=cell.libraries,
-                code=cell.content,
-                purpose=f"{VERB[tool_type]} {cell.section}",
-                inputs=inputs,
-                outputs=outputs,
-                concepts=concepts_for(cell),
-                topic_ids=mapper.topics(cell.notebook_id, context),
-                source=Source(notebook_id=cell.notebook_id, notebook_title=cell.notebook_title,
-                              section_path=" > ".join(cell.section_path) or config.DEFAULT_SECTION,
-                              cell_ids=[cell.cell_index]),
-                quality=ToolQuality(
-                    is_teaching_code=teaching,
-                    is_self_contained=self_contained,
-                    has_output=any(o.content_type != "error" for o in cell.outputs),
-                    has_error_output=has_error,
-                    has_explanation_nearby=bool(explanation),
-                    complexity=complexity,
-                    suitable_for_answer=teaching and not has_error and tree is not None
-                    and not (tool_type == "demonstration" and n_lines <= 1 and not cell.outputs),
-                ),
-                tags=sorted(set(cell.libraries) | {tool_type}),
-                created_at=cell.ingested_at,
-            ))
-    for n, t in enumerate(tools, 1):
-        t.tool_id = f"TOOL_{n:04d}"
-    return tools
-
-
 # ----------------------------------------------------------------------------
 # Resources
 # ----------------------------------------------------------------------------
@@ -484,159 +322,62 @@ def save_image(images_dir: Path, name: str, fmt: str, data: bytes, root: Path) -
     return str(path.relative_to(root)) if path.is_relative_to(root) else str(path)
 
 
-def build_resources(cells: list[CellRecord], tools: list[Tool], mapper: TopicMapper,
-                    raw_dir: Path, out_dir: Path) -> list[Resource]:
-    images_dir = out_dir / IMAGES_DIR
-    root = config.ROOT
-    tool_by_cell = {t.cell_id: t.tool_id for t in tools}
-    raw_cells: dict[str, list[dict]] = {}
-    for c in cells:
-        if c.notebook_id not in raw_cells:
-            raw_cells[c.notebook_id] = read_notebook(raw_dir / c.file_name)[0]["cells"]
-    by_nb: dict[str, list[CellRecord]] = defaultdict(list)
-    for c in cells:
-        by_nb[c.notebook_id].append(c)
-
-    resources: list[Resource] = []
-    for nb_id, nb_cells in by_nb.items():
-        for i, cell in enumerate(nb_cells):
-            raw = raw_cells[nb_id][cell.cell_index]
-            items: list[dict] = []                                  # pending resources for this cell
-            if cell.cell_type == "markdown" and cell.contains_image:
-                attachments = raw.get("attachments") or {}
-                for n, (alt, src) in enumerate(markdown_images(to_text(raw.get("source", "")))):
-                    item = {"n": n, "alt": alt.strip(), "kind": "markdown"}
-                    m = DATA_URI_RE.match(src)
-                    if m:
-                        item.update(location="embedded", mime=m.group(1), data=base64.b64decode(m.group(2)))
-                    elif src.startswith("attachment:") and src[11:] in attachments:
-                        mime, b64 = next(iter(attachments[src[11:]].items()))
-                        item.update(location="embedded", mime=mime, data=base64.b64decode(b64))
-                    else:
-                        item.update(location="google_drive" if "drive.google" in src else "url", url=src)
-                    items.append(item)
-            elif cell.cell_type == "code":
-                n = 0
-                for o in raw.get("outputs") or []:
-                    for mime, payload in sorted((o.get("data") or {}).items()):
-                        if mime.startswith("image/"):
-                            data = to_text(payload).encode() if mime == "image/svg+xml" \
-                                else base64.b64decode(to_text(payload))
-                            items.append({"n": n, "alt": "", "kind": "plot", "location": "embedded",
-                                          "mime": mime, "data": data})
-                            n += 1
-                            break                                   # one image per output
-            if not items:
-                continue
-
-            # Nearby markdown: this cell's own text, else the closest markdown in the same section
-            nearby = plain_text(cell.content) if cell.cell_type == "markdown" else ""
-            if len(nearby) < 30:
-                for j in [i - 1, i + 1, i - 2, i + 2]:
-                    if 0 <= j < len(nb_cells) and nb_cells[j].cell_type == "markdown" \
-                            and nb_cells[j].section_path == cell.section_path:
-                        text = plain_text(nb_cells[j].content)
-                        if len(text) >= 30:
-                            nearby = text
-                            break
-            nearby = first_sentences(nearby) if nearby else ""
-            near_tools = [tool_by_cell[c.cell_id] for c in nb_cells[max(0, i - 5):i + 6]
-                          if c.cell_id in tool_by_cell and c.section_path == cell.section_path][:3]
-
-            for item in items:
-                alt = item["alt"]
-                meaningful_alt = alt and not FILENAME_LIKE_RE.match(alt)
-                fmt, local_path, width, height, size = None, None, None, None, None
-                if item["location"] == "embedded":
-                    fmt = item["mime"].split("/")[1].replace("svg+xml", "svg").replace("jpg", "jpeg")
-                    width, height = image_size(item["data"])
-                    size = len(item["data"])
-                    local_path = save_image(images_dir, f"{cell.cell_id}_{item['n']}", fmt, item["data"], root)
-                else:
-                    ext = re.search(r"\.(png|jpe?g|gif|svg|webp|bmp)(\?|$)", item["url"], re.I)
-                    fmt = EXT_FORMAT.get(ext.group(1).lower()) if ext else None
-                decorative = bool(width and height and max(width, height) <= DECORATIVE_MAX_PX)
-                if item["kind"] == "plot":
-                    rtype: ResourceType = "plot"
-                elif item["location"] != "embedded":
-                    rtype = "external_reference"
-                else:
-                    rtype = "decorative" if decorative else "unclassified"
-                if item["kind"] == "plot":
-                    caption = Caption(source="nearby_markdown" if nearby else "none", text=nearby)
-                    linked = [tool_by_cell[cell.cell_id]] if cell.cell_id in tool_by_cell else []
-                elif meaningful_alt:
-                    caption = Caption(source="alt_text", text=alt)
-                    linked = near_tools
-                else:
-                    caption = Caption(source="nearby_markdown" if nearby else "none", text=nearby)
-                    linked = near_tools
-                available = item["location"] == "embedded"
-                resources.append(Resource(
-                    resource_id="",
-                    cell_id=cell.cell_id,
-                    title=alt if meaningful_alt else (f"Plot: {cell.section}" if item["kind"] == "plot" else cell.section),
-                    description=nearby,
-                    resource_type=rtype,
-                    availability="embedded" if available else "external_unavailable",
-                    source=Source(notebook_id=nb_id, notebook_title=cell.notebook_title,
-                                  section_path=" > ".join(cell.section_path) or config.DEFAULT_SECTION,
-                                  cell_ids=[cell.cell_index]),
-                    image_reference=ImageReference(
-                        location=item["location"], url=item.get("url"), local_path=local_path, format=fmt,
-                        width=width, height=height, bytes=size),
-                    caption=caption,
-                    concepts=concepts_for(cell),
-                    topic_ids=mapper.topics(nb_id, " ".join(cell.section_path + [alt])),
-                    linked_tool_ids=linked,
-                    retrieval_status="unavailable" if not available
-                    else "excluded_decorative" if decorative else "excluded_from_v1",
-                    quality=ResourceQuality(
-                        is_meaningful=not decorative,
-                        is_decorative=decorative,
-                        contains_formula=False if rtype in ("plot", "decorative") else None,
-                        contains_diagram=False if rtype in ("plot", "decorative") else None,
-                        contains_worked_example=False if rtype in ("plot", "decorative") else None,
-                        requires_vision_model=not decorative,
-                    ),
-                    created_at=cell.ingested_at,
-                ))
-    for n, r in enumerate(resources, 1):
-        r.resource_id = f"RES_{n:04d}"
-    return resources
-
-
 # ----------------------------------------------------------------------------
-# Main
+# Main: build both inventories and the links (issue #1)
 # ----------------------------------------------------------------------------
-def load_cells(path: Path) -> list[CellRecord]:
-    with path.open(encoding="utf-8") as f:
-        return [CellRecord.model_validate_json(line) for line in f if line.strip()]
+def run(processed_dir: Path = config.PROCESSED_DIR, raw_dir: Path = config.RAW_NOTEBOOKS_DIR, quiet: bool = False):
+    """Tools -> Resources -> Tool-Concept links, then tools_report.md (resources_report.md is written by
+    resources_inventory). Returns (tools, resources, links)."""
+    import resources_inventory
+    import tool_concept_linker
+    import tools_inventory
+    from content_role_classifier import TOOL_ROLES
+
+    cells = tools_inventory.load_cells(processed_dir / config.CELLS_JSONL)
+    tools, excluded = tools_inventory.run(processed_dir, quiet=quiet, cells=cells)
+    resources = resources_inventory.run(processed_dir, raw_dir, quiet=quiet, cells=cells, tools=tools)
+    links = tool_concept_linker.run(processed_dir, quiet=quiet, cells=cells, tools=tools)
+    eligible = sum(c.cell_type == "code" and c.content_role in TOOL_ROLES and bool(c.retrieval_eligible)
+                   for c in cells)
+    report = ["# Tools Report", "", f"Pipeline `{config.PIPELINE_VERSION}` · `src/tools_inventory.py`, "
+              "`src/tool_concept_linker.py` · issue #1", ""]
+    report += tools_inventory.tools_report_section(tools, excluded, eligible)
+    report += tool_concept_linker.links_report_section(tools, links)
+    report += review_section(processed_dir / REVIEW_CSV, "tools_20")
+    (processed_dir / TOOLS_REPORT_MD).write_text("\n".join(report) + "\n", encoding="utf-8", newline="\n")
+    res_report = processed_dir / resources_inventory.RESOURCES_REPORT_MD
+    res_report.write_text(res_report.read_text(encoding="utf-8")
+                          + "\n".join(review_section(processed_dir / REVIEW_CSV, "resources_20")) + "\n",
+                          encoding="utf-8", newline="\n")
+    return tools, resources, links
 
 
-def run(processed_dir: Path = config.PROCESSED_DIR, raw_dir: Path = config.RAW_NOTEBOOKS_DIR,
-        quiet: bool = False) -> tuple[list[Tool], list[Resource]]:
-    cells_path = processed_dir / config.CELLS_JSONL
-    if not cells_path.exists():
-        raise SystemExit(f"{cells_path} not found; run src/ingestion.py first")
-    cells = load_cells(cells_path)
-    catalog = json.loads(config.TOPIC_CATALOG.read_text(encoding="utf-8")) if config.TOPIC_CATALOG.exists() else {}
-    mapper = TopicMapper(catalog)
-    tools = build_tools(cells, mapper)
-    resources = build_resources(cells, tools, mapper, raw_dir, processed_dir)
-    for name, records in ((TOOLS_JSONL, tools), (RESOURCES_JSONL, resources)):
-        (processed_dir / name).write_text(
-            "".join(json.dumps(r.model_dump(), ensure_ascii=False) + "\n" for r in records),
-            encoding="utf-8", newline="\n")
-    if not quiet:
-        from collections import Counter
-        print(f"{len(tools)} tools: " + ", ".join(f"{k} {v}" for k, v in Counter(t.tool_type for t in tools).most_common()))
-        print(f"  answer-eligible: {sum(t.quality.suitable_for_answer for t in tools)}")
-        print(f"{len(resources)} resources: " + ", ".join(
-            f"{k} {v}" for k, v in Counter(r.resource_type for r in resources).most_common()))
-        print("  availability: " + ", ".join(
-            f"{k} {v}" for k, v in Counter(r.availability for r in resources).most_common()))
-    return tools, resources
+REVIEW_CSV = Path("qa") / "inventory_review_sample.csv"
+
+
+def review_section(path: Path, sample: str) -> list[str]:
+    """Summary of the manual review sample (data/processed/qa/inventory_review_sample.csv), if present."""
+    import csv
+    L = ["## Manual review", ""]
+    if not path.exists():
+        return L + ["No review sample found.", ""]
+    with path.open(encoding="utf-8", newline="") as f:
+        rows = [r for r in csv.DictReader(f) if r["sample"] == sample]
+    if not rows:
+        return L + ["No review sample found.", ""]
+    n = len(rows)
+
+    def ok(col: str) -> str:
+        judged = [r for r in rows if not r[col].startswith("n/a")]
+        good = sum(r[col] == "Y" for r in judged)
+        return f"{good}/{len(judged)}"
+    L += [f"`data/processed/{REVIEW_CSV.as_posix()}` (`{sample}`, stratified, seed 20261027).", "",
+          "| Check | Correct |", "|---|---:|",
+          f"| Type | {ok('type_correct')} |", f"| Provenance (notebook, section, cell) | {ok('provenance_correct')} |",
+          f"| Quality flags / status | {ok('flags_correct')} |", f"| Links (where present) | {ok('link_correct')} |",
+          f"| Critical misclassifications | {sum(r['critical_misclassification'] == 'Y' for r in rows)} of {n} |", ""]
+    notes = [f"- {r['item']} {r['record_id']}: {r['notes']}" for r in rows if r["notes"]]
+    return L + notes + [""]
 
 
 if __name__ == "__main__":
