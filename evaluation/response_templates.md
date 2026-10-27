@@ -1,6 +1,6 @@
 # Response templates and success criteria
 
-This file defines how the agent must format each answer and how each answer is scored. Every question in `questions.jsonl` maps to exactly one template through its `question_type` (or through its `expected_behavior` for refusals and partial answers). That means the template doesn't need its own field in the data.
+This file defines how the agent must format each answer and how each answer is scored. Every record in `golden_set.jsonl` names its template in `answer_template` and lists its `required_sections` and `optional_sections`; those values come from the table in §2.
 
 ## 1. Universal rules
 
@@ -24,27 +24,29 @@ Cite inline as `[S1]`, `[S1][S3]`. End every response with a `## Sources` sectio
 [S2] 14 - Classification metrics.ipynb — "Example", cell 9
 ```
 
-Cell numbers are 1-based (`cell_number`), matching what you see in Colab. After generation, a validator checks that every cited ID exists in the retrieved context and that every listed source is cited at least once.
+In the Sources list, cell numbers are 1-based, as Colab shows them. In `golden_set.jsonl`, `cell_ids` are 0-based positions in the notebook's cell list, so displayed cell = `cell_id + 1`. After generation, a validator checks that every cited ID exists in the retrieved context and that every listed source is cited at least once.
 
-## 2. Question type → template
+## 2. Question type → template → sections
 
-| `question_type` / behavior | Template | Required sections |
-|---|---|---|
-| `definition` | §3.1 Concept | Answer, Intuition, Sources |
-| `formula_recall` | §3.2 Formula | Formula, Variables, Intuition, Sources |
-| `math_derivation` | §3.3 Math explanation | Goal, Starting point, Step-by-step, Final result, Evidence completeness, Sources |
-| `concept_comparison` | §3.4 Comparison | Short answer, Comparison table, Key takeaway, Sources |
-| `code_implementation` | §3.5 Code implementation | Purpose, Code from notes, Explanation, Inputs and outputs, Sources |
-| `code_explanation` | §3.6 Code explanation | Purpose, Code, Line-by-line, Sources |
-| `error_misconception` | §3.7 Misconception | Common mistake, Why it is a problem, Correct approach, Sources |
-| `multi_notebook_synthesis` | §3.8 Synthesis | Short answer, Connection, Evidence from notebooks (≥ 2 notebooks), Sources |
-| `topic_recommendation` | §3.9 Recommendation | Selected topic, Recommended topic 1, Recommended topic 2, Suggested order, Sources |
-| `expected_behavior` = `refuse` / `candidate_refuse` | §3.10 No-evidence refusal | Refusal line |
-| `expected_behavior` = `partial` / `candidate_partial` | §3.11 Partial answer | What the notebooks support, What is missing |
-| conflicting sources (any type) | §3.12 Conflict | Conflict statement, both sources |
-| daily plan (product feature; not in the eval set yet) | §3.13 Daily plan | Three topics, Suggested order, Sources |
+Each `## Heading` in a response corresponds to one section ID: lowercase the heading and replace each run of non-alphanumeric characters with `_` (so `## Step-by-step derivation` becomes `step_by_step_derivation` and `## Inputs / outputs` becomes `inputs_outputs`). The refusal template has no headings; its sections are identified by content.
 
-Optional sections (Mathematical form, Implementation from notes, Common mistakes) appear only when retrieved evidence supports them. If a `definition` question has `requires_math` or `requires_code` set to true, the matching optional section becomes required.
+| `question_type` | `answer_template` | Required sections | Optional sections |
+|---|---|---|---|
+| `definition`, `concept_explanation` | `concept_explanation` (§3.1) | `answer`, `intuition`, `sources` | `mathematical_form`, `implementation_from_notes`, `common_mistakes` |
+| `formula_recall` | `formula` (§3.2) | `formula`, `variable_definitions`, `sources` | `intuition`, `worked_example`, `implementation_from_notes` |
+| `math_derivation` | `mathematical_explanation` (§3.3) | `goal`, `starting_point`, `variables`, `step_by_step_derivation`, `final_result`, `sources` | `interpretation`, `implementation_from_notes`, `evidence_completeness` |
+| `comparison` | `comparison` (§3.4) | `short_answer`, `comparison_table`, `key_relationship`, `sources` | `recommendation` |
+| `code_implementation` | `code_implementation` (§3.5) | `purpose`, `code_from_notes`, `explanation`, `sources` | `inputs_outputs`, `when_to_use` |
+| `code_explanation` | `code_explanation` (§3.6) | `purpose`, `code`, `line_by_line_explanation`, `sources` | `inputs_outputs`, `common_mistake` |
+| `debugging` | `misconception` (§3.7) | `common_mistake`, `why_it_is_a_problem`, `correct_approach`, `sources` | none |
+| `multi_notebook_synthesis` | `synthesis` (§3.8) | `short_answer`, `connection_between_concepts`, `evidence_from_notebooks`, `sources` | none |
+| `topic_recommendation` | `topic_recommendation` (§3.9) | `selected_topic`, `recommended_topics`, `suggested_revision_order`, `sources` | none |
+| `refusal` | `refusal` (§3.10) | `refusal_message` | `missing_information` |
+| `partial_answer` | `partial_answer` (§3.11) | `supported_information`, `missing_information`, `sources` | `refusal_message` |
+| `revision_plan` (not in the set yet) | `revision_plan` (§3.13) | `selected_topic`, `recommended_topics`, `suggested_revision_order`, `sources` | none |
+| conflicting sources (any type) | §3.12 | conflict statement citing both sources | none |
+
+Optional sections appear only when retrieved evidence supports them. For `concept_explanation`, `requires_math` makes `mathematical_form` required and `requires_code` makes `implementation_from_notes` required. In a `mathematical_explanation`, `evidence_completeness` is required whenever the notes don't contain the full derivation.
 
 ## 3. Templates
 
@@ -61,10 +63,6 @@ The idea in plain language: why it exists, what problem it solves. [S1]
 
 ## Mathematical form            (optional)
 Formula with every symbol defined. [S2]
-
-## Step-by-step logic           (optional)
-1. ...
-2. ...
 
 ## Implementation from notes    (optional)
 ```python
@@ -87,11 +85,11 @@ Used for: "What is the formula for X?", "How is X calculated?"
 ## Formula
 Precision = TP / (TP + FP) [S1]
 
-## Variables
+## Variable definitions
 - TP: ... [S1]
 - FP: ... [S1]
 
-## Intuition
+## Intuition                    (optional)
 What the formula measures, in one or two lines. [S1]
 
 ## Worked example               (optional, only if one exists in the notes)
@@ -113,7 +111,7 @@ Definition, formula or assumption, as stated in the notes. [S1]
 ## Variables
 - symbol: meaning [S1]
 
-## Step-by-step
+## Step-by-step derivation
 1. Operation or rule applied: ...
    Result: ...
    Why valid: ... [S2]
@@ -122,12 +120,12 @@ Definition, formula or assumption, as stated in the notes. [S1]
 ## Final result
 The formula or conclusion. [S2]
 
-## Interpretation
+## Interpretation               (optional)
 What the result means in practice. [S2]
 
 ## Implementation from notes    (optional)
 
-## Evidence completeness
+## Evidence completeness        (required if the derivation is incomplete)
 "The notebooks contain the full derivation" or
 "The notebooks give steps 1–2 and the final result; the intermediate steps are not in the notes."
 
@@ -144,15 +142,18 @@ Used for: "Difference between X and Y", "Compare X and Y", "When to use X vs Y".
 ## Short answer
 The core distinction in one or two lines. [S1][S2]
 
-## Comparison
+## Comparison table
 | Aspect       | X        | Y        |
 |--------------|----------|----------|
 | Definition   | ... [S1] | ... [S2] |
 | How it works | ...      | ...      |
 | When to use  | ...      | ...      |
 
-## Key takeaway
-How the two relate, or when to pick which. [S1][S2]
+## Key relationship
+How the two relate. [S1][S2]
+
+## Recommendation               (optional)
+When to pick which, only if the notes say so. [S1]
 
 ## Sources
 ```
@@ -176,7 +177,7 @@ What the code does. [S1]
 ## Explanation
 - Key line or block: what it does.
 
-## Inputs and outputs
+## Inputs / outputs             (optional)
 - Inputs: required variables, data, imports.
 - Outputs: what it returns or prints.
 
@@ -200,11 +201,11 @@ What the code is meant to do. [S1]
 # the relevant excerpt from the notebook
 ```
 
-## Line-by-line
+## Line-by-line explanation
 1. `line or block`: explanation. [S1]
 2. ...
 
-## Inputs and outputs           (optional)
+## Inputs / outputs             (optional)
 
 ## Common mistake               (optional, only if supported)
 
@@ -256,14 +257,13 @@ Used for: "I'm revising X, what should I study next?"
 ## Selected topic
 X
 
-## Recommended topic 1
-- Topic: ...
-- Relationship: prerequisite / closely related / extension
-- Why: the evidence-backed link to X. [S1]
-- Notebook coverage: appears in N notebooks
-
-## Recommended topic 2
-- (same fields)
+## Recommended topics
+1. Topic: ...
+   - Relationship: prerequisite / closely related / extension
+   - Why: the evidence-backed link to X. [S1]
+   - Notebook coverage: appears in N notebooks
+2. Topic: ...
+   - (same fields)
 
 ## Suggested revision order
 1. ...
@@ -280,7 +280,8 @@ Return exactly two topics. Every relationship must be backed by evidence, such a
 ```text
 I don't know from the available notebooks.
 
-The notebooks don't cover <subject>. <Optional: the closest topic they do cover, with a citation.>
+<refusal_message: the line above, always>
+<missing_information (optional): what the notebooks don't cover, e.g. "HNSW graph construction and efSearch are not in the notebooks.">
 ```
 
 ### 3.11 Partial answer
@@ -290,14 +291,16 @@ Used for boundary cases where part of the request is supported and part isn't, w
 ```text
 The available notebooks partially address this question.
 
-## What the notebooks support
-<the supported part, in the template for its question type> [S1]
+## Supported information
+<the supported part, following the template for its question type> [S1]
 
-## What is missing
+## Missing information
 - <the unsupported part> and why it can't be answered:
   not in the notebooks / requires your data or results / requires a proof the notes don't contain.
 
 I cannot provide the missing part from the available notebooks.
+
+## Sources
 ```
 
 ### 3.12 Conflicting evidence
@@ -311,9 +314,9 @@ The available notebooks contain conflicting information.
 I cannot resolve this conflict from the provided context.
 ```
 
-### 3.13 Daily revision plan
+### 3.13 Daily revision plan (`revision_plan`)
 
-This is a product feature with no evaluation questions yet.
+This is a product feature with no evaluation questions yet. Its section IDs match the recommendation template: the user's topic is `selected_topic`, topics 2 and 3 are `recommended_topics`.
 
 ```text
 ## Today's revision plan
@@ -342,44 +345,51 @@ Format and content are scored separately. A response that is well formatted but 
 
 ### 4.1 Scoring dimensions (per response)
 
-| Dimension | 0 | 1 | 2 | Applies to |
-|---|---|---|---|---|
-| Relevance | Doesn't answer the question | Partially answers | Directly answers | All |
-| Correctness | Wrong | Partially correct | Matches `expected_answer_points` | Answerable |
-| Faithfulness | Major unsupported claims | Some unsupported claims | Every claim supported by retrieved chunks | All |
-| Completeness | Major parts missing | Minor parts missing | All required points present | Answerable |
-| Structure | Wrong template | Minor format issues | Correct template and required sections | All |
-| Citations | Missing or invalid | Present but weak | Valid and support their claims | All |
-| Math logic | Wrong or invented steps | Partly logical | Every step stated, valid and sourced; gaps declared | `requires_math` |
-| Code relevance | Irrelevant or invented | Partly relevant | Relevant, minimal, traceable to a notebook | `requires_code` |
-| Recommendation | Unsupported links | One weak link | Two evidence-backed relationships | `topic_recommendation` |
-| Refusal | Hallucinates | Partial refusal | Correct refusal or partial split | `refuse` / `partial` |
+Each record's `evaluation.human_rubric` lists the dimensions that apply to it, with 2 as the target score for each.
 
-Each dimension is scored only where it applies, so no denominator includes a criterion that doesn't fit the question.
+| Rubric key | 0 | 1 | 2 | Applies to |
+|---|---|---|---|---|
+| `retrieval` | Wrong sources retrieved | Some expected sources | Expected sources retrieved | All except refusal |
+| `grounding` | Major unsupported claims | Some unsupported claims | Every claim supported by retrieved chunks | All |
+| `correctness` | Wrong or off-question | Partly correct or missing key points | Answers the question and covers `key_points` | All except refusal |
+| `structure` | Wrong template | Minor format issues | Correct template and all required sections | All |
+| `citation_quality` | Missing or invalid | Present but weak | Valid and support their claims | All except refusal |
+| `math_logic` | Wrong or invented steps | Partly logical | Every step stated, valid and sourced; gaps declared | `requires_math` |
+| `code_relevance` | Irrelevant or invented | Partly relevant | Relevant, minimal, traceable to a notebook | `requires_code` |
+| `recommendation_quality` | Unsupported links | One weak link | Exactly two evidence-backed relationships | `topic_recommendation` |
+| `refusal` | Hallucinates | Partial refusal | Correct refusal, or correct supported/missing split | `refusal`, `partial_answer` |
+
+Each record also carries automatic thresholds in `evaluation`: `min_faithfulness`, `min_correctness`, `min_context_recall` and `min_citation_validity`.
+
+| `question_type` | faithfulness | correctness | context recall | citation validity |
+|---|---:|---:|---:|---:|
+| default | 0.9 | 0.8 | 0.75 | 1.0 |
+| `math_derivation` | 0.9 | 0.75 | 0.8 | 1.0 |
+| `topic_recommendation` | 0.9 | 0.7 | 0.7 | 1.0 |
+| `partial_answer` | 1.0 | 0.8 | 0.75 | 1.0 |
+| `refusal` | 1.0 | 0.8 | 0.0 | 1.0 |
 
 ### 4.2 Pass rule
 
 A response passes when all of the following hold:
 
-- Structure ≥ 1 (the right template was used).
-- Faithfulness = 2.
-- Citation validity is 100%: every cited ID was in the retrieved context.
-- Answerable questions: Correctness = 2 and Completeness ≥ 1.
-- `refuse` / `partial` questions: Refusal = 2.
-- Every applicable type-specific dimension (math, code, recommendation) is ≥ 1.
+- Every automatic score meets its `min_*` threshold. Citation validity is always 100%: every cited ID was in the retrieved context.
+- `grounding` = 2, and `refusal` = 2 where it applies.
+- `structure` ≥ 1 and `correctness` ≥ 1, wherever they apply.
+- Every other applicable rubric dimension is ≥ 1.
 
 ### 4.3 Retrieval (scored separately from generation)
 
 | Metric | Definition |
 |---|---|
-| Evidence recall@k | Share of `expected_sources` cells found in the top-k retrieved chunks |
+| Evidence recall@k | Share of `expected_sources` cells (later `expected_chunk_ids`) found in the top-k retrieved chunks; compared against `min_context_recall` |
 | Evidence-group coverage | For multi-notebook questions: whether each required notebook contributed a chunk |
 
 Diagnose a failure by checking retrieval first. If the required evidence never reached the model, it's a retrieval failure. If it did and the answer is still wrong, it's a generation failure.
 
 ### 4.4 v1 quality gate
 
-The baseline isn't complete until it meets all of these on the score-eligible set:
+The baseline isn't complete until it meets all of these on the completed questions (those with an answer key and sources; see `scripts/eval_report.py`):
 
 | Criterion | v1 target |
 |---|---:|

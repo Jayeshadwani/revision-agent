@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
-Summarise the evaluation set, or export it as CSV.
+Validate and summarise the evaluation set, or export it as CSV.
 
 Usage (from the project root):
-    python scripts/eval_report.py                      # counts by difficulty, type, topic, status
-    python scripts/eval_report.py --topics             # per-topic coverage table
-    python scripts/eval_report.py --csv out.csv        # flat CSV export (nested fields as JSON)
-    python scripts/eval_report.py --check              # validate difficulty scores and bands
+    python scripts/eval_report.py              # counts by difficulty, type, template, completeness
+    python scripts/eval_report.py --check      # schema validation; exits 1 on errors
+    python scripts/eval_report.py --csv x.csv  # flat CSV ('|' separates list items)
 
-Everything here is derived from evaluation/questions.jsonl, so no summary files are committed.
+Everything is derived from evaluation/golden_set.jsonl, so no summary files are committed.
 """
 from __future__ import annotations
 
@@ -20,102 +19,184 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-QUESTIONS = ROOT / "evaluation" / "questions.jsonl"
+GOLDEN = ROOT / "evaluation" / "golden_set.jsonl"
 
-WEIGHTS = {
-    "cognitive_operation": 0.35,
-    "retrieval_breadth": 0.25,
-    "math_demand": 0.20,
-    "ambiguity_inference": 0.20,
+QUESTION_TYPES = {
+    "definition", "formula_recall", "math_derivation", "concept_explanation", "comparison",
+    "code_implementation", "code_explanation", "debugging", "multi_notebook_synthesis",
+    "topic_recommendation", "revision_plan", "refusal", "partial_answer",
 }
-LEVELS = ("easy", "medium", "hard")
+TEMPLATES = {
+    "concept_explanation", "formula", "mathematical_explanation", "comparison",
+    "code_implementation", "code_explanation", "misconception", "synthesis",
+    "topic_recommendation", "revision_plan", "refusal", "partial_answer",
+}
+DIFFICULTIES = ("easy", "medium", "hard")
+SOURCE_TYPES = {"markdown", "code", "output", "mixed"}
+TOP_LEVEL = [
+    "question_id", "version", "question", "question_type", "difficulty", "difficulty_score",
+    "expected_answer", "expected_sources", "expected_chunk_ids", "expected_topics",
+    "requirements", "answer_template", "evaluation", "notes",
+]
+REQUIREMENTS = [
+    "requires_math", "requires_code", "requires_comparison", "requires_multi_notebook",
+    "requires_recommendation", "requires_step_by_step", "partial_evidence_only", "should_refuse",
+]
 
 
-def load(path: Path = QUESTIONS) -> list[dict]:
+def load(path: Path = GOLDEN) -> list[dict]:
     with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
 
 def band(score: float) -> str:
-    if score < 0.40:
-        return "easy"
-    if score < 0.70:
-        return "medium"
-    return "hard"
+    return "easy" if score < 0.40 else "medium" if score < 0.70 else "hard"
 
 
-def table(title: str, rows: dict[str, Counter]) -> None:
-    print(f"\n{title}")
-    print(f"  {'':28} {'easy':>5} {'med':>5} {'hard':>5} {'total':>6}")
-    for key in sorted(rows):
-        c = rows[key]
-        print(f"  {key:28} {c['easy']:5} {c['medium']:5} {c['hard']:5} {sum(c.values()):6}")
+def has_key_answer(q: dict) -> bool:
+    ea = q["expected_answer"]
+    return bool(ea.get("summary") or ea.get("key_points"))
 
 
-def summary(qs: list[dict]) -> None:
-    diff = Counter(q["difficulty"] for q in qs)
-    total = len(qs)
-    print(f"{total} questions")
-    for lvl in LEVELS:
-        print(f"  {lvl:7} {diff[lvl]:4}  ({diff[lvl] / total:.1%})")
-
-    by_type: dict[str, Counter] = defaultdict(Counter)
-    for q in qs:
-        by_type[q["question_type"]][q["difficulty"]] += 1
-    table("By question type", by_type)
-
-    for field in ("expected_behavior", "evidence_status", "answer_key_review_status"):
-        print(f"\nBy {field}")
-        for k, v in Counter(q[field] for q in qs).most_common():
-            print(f"  {k:46} {v:4}")
-    print(f"\nscore_eligible: {sum(q['score_eligible'] for q in qs)} / {total}")
+def has_sources(q: dict) -> bool:
+    return bool(q["expected_sources"])
 
 
-def topics(qs: list[dict]) -> None:
-    rows: dict[str, Counter] = defaultdict(Counter)
-    names: dict[str, str] = {}
-    for q in qs:
-        key = q["topic_id"]
-        names[key] = q["topic_name"]
-        rows[key][q["difficulty"]] += 1
-        rows[key]["boundary" if q["question_id"].startswith("B") else "core"] += 1
-    print(f"{'topic':5} {'name':42} {'core':>4} {'bnd':>4} {'easy':>5} {'med':>5} {'hard':>5}")
-    for key in sorted(rows):
-        c = rows[key]
-        print(f"{key:5} {names[key][:42]:42} {c['core']:4} {c['boundary']:4} "
-              f"{c['easy']:5} {c['medium']:5} {c['hard']:5}")
+def is_complete(q: dict) -> bool:
+    """Ready to score: an answer key, plus sources unless it is a refusal."""
+    return has_key_answer(q) and (q["requirements"]["should_refuse"] or has_sources(q))
 
 
-def export_csv(qs: list[dict], out: Path) -> None:
-    fields = list(dict.fromkeys(k for q in qs for k in q))
-    with out.open("w", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=fields)
-        w.writeheader()
-        for q in qs:
-            w.writerow({k: json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else v
-                        for k, v in q.items()})
-    print(f"wrote {len(qs)} rows to {out}")
+# ----------------------------------------------------------------------------
+# Validation: errors break the schema; "incomplete" just means the answer key is pending.
+# ----------------------------------------------------------------------------
+def validate(q: dict) -> list[str]:
+    e = []
+    qid = q.get("question_id", "?")
+    missing = [k for k in TOP_LEVEL if k not in q]
+    if missing:
+        return [f"{qid}: missing fields {missing}"]
+    if not q["question"].strip():
+        e.append(f"{qid}: empty question")
+    if q["question_type"] not in QUESTION_TYPES:
+        e.append(f"{qid}: bad question_type {q['question_type']!r}")
+    if q["answer_template"] not in TEMPLATES:
+        e.append(f"{qid}: bad answer_template {q['answer_template']!r}")
+    if q["difficulty"] not in DIFFICULTIES:
+        e.append(f"{qid}: bad difficulty {q['difficulty']!r}")
+    elif band(q["difficulty_score"]) != q["difficulty"]:
+        e.append(f"{qid}: difficulty {q['difficulty']} != band of score {q['difficulty_score']}")
+
+    req = q["requirements"]
+    if sorted(req) != sorted(REQUIREMENTS):
+        e.append(f"{qid}: requirements keys {sorted(req)}")
+        return e
+    if req["should_refuse"] and q["expected_sources"]:
+        e.append(f"{qid}: should_refuse but has expected_sources")
+    if req["should_refuse"] != (q["question_type"] == "refusal"):
+        e.append(f"{qid}: should_refuse inconsistent with question_type")
+    if req["partial_evidence_only"] != (q["question_type"] == "partial_answer"):
+        e.append(f"{qid}: partial_evidence_only inconsistent with question_type")
+    if req["requires_math"] and q["answer_template"] not in ("formula", "mathematical_explanation") \
+            and not {"mathematical_form", "formula"} & set(q["expected_answer"]["required_sections"]) \
+            and q["question_type"] not in ("refusal", "partial_answer"):
+        e.append(f"{qid}: requires_math but no math template or required math section")
+
+    nbs = {s.get("notebook_id") for s in q["expected_sources"]}
+    if req["requires_multi_notebook"] and q["expected_sources"] and len(nbs) < 2:
+        e.append(f"{qid}: requires_multi_notebook but sources from {len(nbs)} notebook")
+    for s in q["expected_sources"]:
+        if s.get("source_type") not in SOURCE_TYPES:
+            e.append(f"{qid}: bad source_type {s.get('source_type')!r}")
+        if not s.get("notebook_id") or not s.get("cell_ids"):
+            e.append(f"{qid}: source without notebook_id or cell_ids")
+
+    ea = q["expected_answer"]
+    if "sources" not in ea["required_sections"] and q["answer_template"] != "refusal":
+        e.append(f"{qid}: required_sections lacks 'sources'")
+    if set(ea["required_sections"]) & set(ea["optional_sections"]):
+        e.append(f"{qid}: section both required and optional")
+    return e
 
 
 def check(qs: list[dict]) -> int:
-    problems = []
-    ids = Counter(q["question_id"] for q in qs)
-    problems += [f"duplicate id {i}" for i, n in ids.items() if n > 1]
+    errors = [f"duplicate id {i}" for i, n in Counter(q["question_id"] for q in qs).items() if n > 1]
     for q in qs:
-        score = round(sum(WEIGHTS[k] * q[k] for k in WEIGHTS), 4)
-        if abs(score - q["difficulty_score"]) > 1e-4:
-            problems.append(f"{q['question_id']}: score {q['difficulty_score']} != recomputed {score}")
-        if band(q["difficulty_score"]) != q["difficulty"]:
-            problems.append(f"{q['question_id']}: label {q['difficulty']} != band {band(q['difficulty_score'])}")
-    print("\n".join(problems) if problems else f"OK: {len(qs)} questions, scores and bands consistent")
-    return 1 if problems else 0
+        errors += validate(q)
+    if errors:
+        print("\n".join(errors))
+        print(f"\n{len(errors)} schema errors")
+        return 1
+    done = sum(is_complete(q) for q in qs)
+    print(f"OK: {len(qs)} records valid. {done} complete (answer key + sources), "
+          f"{len(qs) - done} pending answer key or source evidence.")
+    return 0
+
+
+# ----------------------------------------------------------------------------
+# Reports
+# ----------------------------------------------------------------------------
+def summary(qs: list[dict]) -> None:
+    total = len(qs)
+    diff = Counter(q["difficulty"] for q in qs)
+    print(f"{total} questions")
+    for lvl in DIFFICULTIES:
+        print(f"  {lvl:7} {diff[lvl]:4}  ({diff[lvl] / total:.1%})")
+
+    rows: dict[str, Counter] = defaultdict(Counter)
+    for q in qs:
+        c = rows[q["question_type"]]
+        c[q["difficulty"]] += 1
+        c["answer"] += has_key_answer(q)
+        c["sources"] += has_sources(q)
+        c["complete"] += is_complete(q)
+    print(f"\n  {'question_type':26} {'easy':>4} {'med':>4} {'hard':>4} {'total':>5}"
+          f" {'key':>4} {'src':>4} {'done':>4}")
+    for t in sorted(rows):
+        c = rows[t]
+        n = c["easy"] + c["medium"] + c["hard"]
+        print(f"  {t:26} {c['easy']:4} {c['medium']:4} {c['hard']:4} {n:5}"
+              f" {c['answer']:4} {c['sources']:4} {c['complete']:4}")
+    print("\n  key = has expected answer, src = has expected sources, done = both (or a refusal with a key)")
+
+    print("\nBy answer_template")
+    for k, v in Counter(q["answer_template"] for q in qs).most_common():
+        print(f"  {k:26} {v:4}")
+    print("\nBy topic")
+    for k, v in sorted(Counter(t for q in qs for t in q["expected_topics"]).items()):
+        print(f"  {k:42} {v:3}")
+
+
+def export_csv(qs: list[dict], out: Path) -> None:
+    def j(items):
+        return "|".join(str(x) for x in items)
+
+    cols = ["question_id", "version", "question", "question_type", "difficulty", "difficulty_score",
+            "expected_summary", "expected_key_points", "required_sections", "expected_notebook_ids",
+            "expected_cell_ids", "expected_chunk_ids", "expected_topics", *REQUIREMENTS,
+            "answer_template", "min_faithfulness", "min_correctness", "min_context_recall", "notes"]
+    with out.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(cols)
+        for q in qs:
+            ea, ev, src = q["expected_answer"], q["evaluation"], q["expected_sources"]
+            w.writerow([
+                q["question_id"], q["version"], q["question"], q["question_type"], q["difficulty"],
+                q["difficulty_score"], ea["summary"], j(ea["key_points"]), j(ea["required_sections"]),
+                j(dict.fromkeys(s["notebook_id"] for s in src)),
+                j(f"{s['notebook_id']}:{c}" for s in src for c in s["cell_ids"]),
+                j(q["expected_chunk_ids"]), j(q["expected_topics"]),
+                *[q["requirements"][k] for k in REQUIREMENTS],
+                q["answer_template"], ev["min_faithfulness"], ev["min_correctness"],
+                ev["min_context_recall"], q["notes"],
+            ])
+    print(f"wrote {len(qs)} rows to {out}")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--topics", action="store_true", help="per-topic coverage table")
+    ap.add_argument("--check", action="store_true", help="validate the schema")
     ap.add_argument("--csv", type=Path, help="export a flat CSV to this path")
-    ap.add_argument("--check", action="store_true", help="validate scores, bands and ids")
     args = ap.parse_args()
 
     qs = load()
@@ -123,8 +204,6 @@ def main() -> int:
         return check(qs)
     if args.csv:
         export_csv(qs, args.csv)
-    elif args.topics:
-        topics(qs)
     else:
         summary(qs)
     return 0
