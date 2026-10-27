@@ -1,5 +1,59 @@
 # Changelog
 
+## phase2 — PH2-CHUNK-001 (issue #3): Concept, Tool and Resource chunks (2026-10-27)
+
+### Chunks
+
+- New `src/chunking.py` (merge and split logic) and `src/chunk_builder.py` (CLI, linking, report).
+  They write `concept_chunks.jsonl`, `tool_chunks.jsonl`, `resource_chunks.jsonl`,
+  `chunk_exclusions.jsonl` and `chunking_report.md`. See `docs/chunking.md`.
+- Results:
+  - Concept chunks: 862, covering all 3,025 eligible teaching spans.
+    - Median 310 tokens: 433 are within 300–800, 426 are smaller and 3 are larger.
+    - 115 are tiny: isolated short sections that are flagged rather than merged across a section
+      boundary.
+    - Embedded instructor notes and quiz text are stripped from 26 chunks.
+  - Tool chunks: 1,322, one per answer-suitable Tool.
+    - 793 are attached to concepts through implements/demonstrates/visualizes links.
+    - 10 copies are flagged `duplicate_of` and are not retrieval-eligible.
+  - Resource chunks: 1,318, one per attachable Resource.
+    - All are `vision_status: pending` and not retrieval-eligible.
+    - The 108 `pending_vision` resources are excluded.
+
+### Content-role fixes found while checking chunks
+
+- **Code.**
+  - Statements inside `if` / `with` blocks are now checked, and shell `!gdown` / `!wget` /
+    `!pip` lines count as loading or setup.
+  - 6 cells were re-labelled from tool_demonstration to non-tool roles:
+    - 4 data loaders that use `!gdown` / `!wget`.
+    - 1 directory set-up.
+    - The GPU-conditional hyperparameters cell (V80 in the PH1-ROLE-001 validation sample).
+- **Markdown.**
+  - A heading inside a quiz container section ("QUIZ", "Quiz 2", "MCQs") is now a quiz.
+  - A topic list under an Agenda/Content heading is now an agenda item.
+  - A question written as a heading, or a lesson under an Agenda H1, is unaffected.
+  - 3 spans changed role.
+- **Knock-on changes.**
+  - The Tools inventory is down to 1,453, and tool IDs after nb_18 shift.
+  - The golden prompt reference `TOOL_0604` becomes `TOOL_0602`, mapped by source cell.
+  - The PH1-ROLE-001 QC row V80 is marked as fixed.
+
+### Tests
+
+- `tests/test_chunking.py` has 20 tests covering the ticket's ten cases:
+  - tiny-span merging
+  - no merging across notebooks or unrelated sections
+  - source reconstruction
+  - tool provenance
+  - pending-vision exclusion
+  - relationship-gated attachment
+  - support-content exclusion
+  - unique IDs
+  - stable reruns
+- It also has split/overlap/stripping primitives and corpus checks.
+- `tests/test_content_roles.py` gains 4 tests for the new role rules.
+
 ## phase1-v2 — Issue #1: Tools and Resources inventories (2026-10-27)
 
 The Tools and Resources inventories are now built from the classified corpus
