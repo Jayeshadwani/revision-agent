@@ -17,20 +17,22 @@ INVENTORY_CSV = "corpus_inventory.csv"
 TOPIC_CANDIDATES_CSV = "topic_candidates.csv"
 REPORT_MD = "ingestion_report.md"
 
-PIPELINE_VERSION = "phase1-v1"
+PIPELINE_VERSION = "phase1-v2"            # v2: heading-span sections, output roles (PH1-FIX-001)
 EXPECTED_NOTEBOOKS = 53
 
-# Section assigned to cells that come before the first heading
-DEFAULT_SECTION = "Untitled / beginning of notebook"
+# Section title for text that comes before the notebook's first heading (section_path is [])
+DEFAULT_SECTION = "Preamble"
 
 # Headings that label a block rather than start a section (MCQ blocks, "Code:" labels).
 # They stay in the cell content but do not change the section of later cells.
 NON_STRUCTURAL_HEADINGS = {"question", "questions", "choices", "choice", "code", "answer", "options"}
 
-# Output handling
-MAX_OUTPUT_CHARS = 4000          # longer text outputs are truncated and flagged
+# Output handling (see notebook_parser.classify_output for the roles)
+MAX_OUTPUT_CHARS = 4000          # logs, dataframe dumps and errors longer than this are truncated
+MAX_TEACHING_OUTPUT_CHARS = 20000  # printed teaching text and results keep up to this much
+LARGE_TABLE_LINES = 15           # table outputs longer than this are dataframe dumps, not results
 SHORT_CELL_CHARS = 20            # non-empty cells shorter than this are flagged as short
 
 # Quality thresholds used by the report and the tests
-MIN_SECTION_COVERAGE = 0.90      # share of non-empty cells with a real section
+MAX_SECTION_MISLABEL_RATE = 0.02  # share of markdown text under the wrong section (PH1-FIX-001)
 SMALL_NOTEBOOK_CELLS = 15        # notebooks with fewer cells are flagged for review

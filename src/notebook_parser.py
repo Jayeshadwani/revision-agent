@@ -2,7 +2,12 @@
 Parse one Jupyter/Colab notebook into structured, traceable cell records (Phase 1).
 
 Cleaning here is deliberately conservative: Unicode and whitespace are normalized, and
-nothing else is removed. Headings, LaTeX, tables, lists, code comments, instructor notes
+nothing else is removed.
+
+Sections are assigned per heading span (phase1-v2, PH1-FIX-001): every markdown cell is split
+at its headings into contiguous spans that reproduce the cell's `content` exactly, and each span
+carries its own section path. Text before a cell's first heading continues the previous section,
+or is `Preamble` when the notebook has no heading yet. Headings, LaTeX, tables, lists, code comments, instructor notes
 and MCQ blocks are kept in `content` and only *flagged*. Heavier cleaning and chunking
 belong to Phase 2. Outputs are stored separately from the cell source.
 
@@ -32,18 +37,53 @@ except ImportError:  # pragma: no cover - depends on the environment
 # ----------------------------------------------------------------------------
 # Record schemas
 # ----------------------------------------------------------------------------
+OutputRole = Literal["teaching_text", "result", "log", "dataframe_dump", "error"]
+
+
 class Output(BaseModel):
     output_type: str                 # stream | execute_result | display_data | error
     content_type: str                # text | table | html | image | error | widget | javascript | other
     content: str                     # text form ('' for images/widgets)
     mime_types: list[str] = []
-    truncated: bool = False
+    output_role: OutputRole = "result"
+    truncated: bool = False          # content was cut at the limit for its role
+    original_length: int = 0         # characters before truncation
 
 
 class Heading(BaseModel):
     level: int
     text: str                        # cleaned display text
     structural: bool                 # False for block labels such as "Question" / "Choices"
+
+
+SpanKind = Literal["heading", "label", "continuation", "preamble"]
+
+
+class Span(BaseModel):
+    """A contiguous slice of a markdown cell's `content` under one section.
+
+    kind: heading      starts at a structural heading
+          label        starts at a block label (Question / Choices / Code); section unchanged
+          continuation text before the cell's first heading, continuing the previous section
+          preamble     text before the notebook's first heading (section_path is [])
+    char_start/char_end index into the cell's `content`; spans are contiguous and their
+    contents concatenate to `content` exactly.
+    """
+    span_id: str
+    cell_id: str
+    notebook_id: str
+    span_index: int
+    kind: SpanKind
+    heading_level: Optional[int]
+    heading_text: Optional[str]
+    section_title: str
+    section_path: list[str]
+    content: str
+    char_start: int
+    char_end: int
+    contains_math: bool
+    contains_table: bool
+    contains_list: bool
 
 
 class CellRecord(BaseModel):
@@ -56,6 +96,10 @@ class CellRecord(BaseModel):
     section: str
     section_path: list[str]          # heading hierarchy, outermost first
     headings: list[Heading]          # headings defined inside this cell
+    spans: list[Span]                # markdown cells only; empty for code cells and empty cells
+    span_count: int
+    has_multiple_sections: bool
+    section_accuracy_status: Literal["ok", "fixed", "preamble"]
     content: str
     content_length_chars: int
     is_empty: bool
@@ -104,7 +148,12 @@ class NotebookRecord(BaseModel):
     mcq_cells: int = 0
     error_output_cells: int = 0
     heading_count: int = 0
-    section_coverage: float = 0.0
+    span_count: int = 0
+    multi_section_cells: int = 0     # markdown cells split into more than one section
+    preamble_only_cells: int = 0     # non-empty markdown cells entirely before the first heading
+    section_mislabel_rate: Optional[float] = None         # filled by ingestion's accuracy check
+    legacy_section_mislabel_rate: Optional[float] = None  # same check, phase1-v1 cell-level rule
+    teaching_outputs: int = 0
     libraries: list[str] = []
     outline: list[dict] = []         # [{cell_index, level, text}] for structural headings
     warnings: list[str] = []
@@ -115,8 +164,14 @@ class NotebookRecord(BaseModel):
 # Patterns
 # ----------------------------------------------------------------------------
 FILE_NAME_RE = re.compile(r"^(\d+)\s*-\s*(.+?)\.ipynb$")
-FENCE_RE = re.compile(r"^\s*(```|~~~)")
-MD_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*\s*$")
+FENCE_RE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+# ATX heading (CommonMark): up to 3 leading spaces, 1-6 '#', then a space/tab or end of line.
+# "#text" without a space is not a heading (78 such lines in the corpus stay plain text).
+MD_HEADING_RE = re.compile(r"^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
+CLOSING_HASHES_RE = re.compile(r"(?:^|[ \t]+)#+[ \t]*$")
+SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(=+|-+)[ \t]*$")
+THEMATIC_BREAK_RE = re.compile(r"^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$")
+BLOCK_START_RE = re.compile(r"^ {0,3}(#|>|[-*+][ \t]|\d{1,9}[.)][ \t]|\||<|`{3,}|~{3,})")
 HTML_HEADING_RE = re.compile(r"<h([1-6])\b[^>]*>(.*?)</h\1>", re.I | re.S)
 
 DISPLAY_MATH_RE = re.compile(r"\$\$(.+?)\$\$", re.S)
@@ -149,7 +204,7 @@ PLOT_CALL_RE = re.compile(
     r"\b(plt|sns|px|go|ax|axes|axs|fig)\.\w+\(|\.plot\(|\.hist\(|\bimshow\(|\.heatmap\(|\bplot_\w+\("
 )
 
-ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 TAG_RE = re.compile(r"<[^>]+>")
 ZERO_WIDTH_RE = re.compile("[\u200b\u200c\u200d\u2060\ufeff]")
 DATA_URI_RE = re.compile(r"data:(image/[\w.+-]+);base64,[A-Za-z0-9+/=\s]+")
@@ -205,42 +260,125 @@ def clean_heading(text: str) -> str:
 
 
 def outside_fences(text: str) -> list[str]:
-    """Markdown lines that are not inside ``` / ~~~ fences."""
-    lines, fenced = [], False
-    for line in text.split("\n"):
-        if FENCE_RE.match(line):
-            fenced = not fenced
+    """Markdown lines that are not inside ``` / ~~~ fences (fence lines themselves excluded)."""
+    return [line for line, fenced in fence_states(text.split("\n")) if not fenced]
+
+
+def fence_states(lines: list[str]) -> list[tuple[str, bool]]:
+    """(line, is_fenced_or_fence_line) per line. A fence closes on the same character with at
+    least the opening length (CommonMark); an unclosed fence runs to the end of the cell."""
+    out, fence = [], None
+    for line in lines:
+        m = FENCE_RE.match(line)
+        if fence is None:
+            if m:
+                fence = m.group(1)
+                out.append((line, True))
+            else:
+                out.append((line, False))
+        else:
+            out.append((line, True))
+            if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) \
+                    and not line.strip()[len(m.group(1)):].strip():
+                fence = None
+    return out
+
+
+class HeadingMatch(BaseModel):
+    start: int                       # offset of the first line of the heading block in the text
+    level: int
+    raw: str                         # heading text as written (before clean_heading)
+    style: Literal["atx", "setext", "html"]
+
+
+def _is_paragraph_line(line: str) -> bool:
+    return bool(line.strip()) and not BLOCK_START_RE.match(line) and not THEMATIC_BREAK_RE.match(line) \
+        and not SETEXT_UNDERLINE_RE.match(line)
+
+
+def scan_headings(text: str) -> list[HeadingMatch]:
+    """All headings in a markdown text with their character offsets, in order.
+
+    Supported: ATX (`#`-`######`, up to 3 leading spaces, optional closing #s), Setext
+    (a paragraph underlined with `===` -> level 1 or `---` -> level 2) and HTML <h1>-<h6>.
+    Lines inside fenced code blocks are never headings. A `---` line that does not follow a
+    paragraph line is a thematic break, not a heading.
+    """
+    lines = text.split("\n")
+    offsets, pos = [], 0
+    for line in lines:
+        offsets.append(pos)
+        pos += len(line) + 1
+    states = fence_states(lines)
+    found: list[HeadingMatch] = []
+    para_start: Optional[int] = None             # line index where the current paragraph began
+    for i, (line, fenced) in enumerate(states):
+        if fenced:
+            para_start = None
             continue
-        if not fenced:
-            lines.append(line)
-    return lines
+        m = MD_HEADING_RE.match(line)
+        if m:
+            body = CLOSING_HASHES_RE.sub("", m.group(2) or "")
+            found.append(HeadingMatch(start=offsets[i], level=len(m.group(1)), raw=body.strip(), style="atx"))
+            para_start = None
+            continue
+        u = SETEXT_UNDERLINE_RE.match(line)
+        if u and para_start is not None:
+            raw = " ".join(l.strip() for l in lines[para_start:i])
+            level = 1 if u.group(1)[0] == "=" else 2
+            found.append(HeadingMatch(start=offsets[para_start], level=level, raw=raw, style="setext"))
+            para_start = None
+            continue
+        h = HTML_HEADING_RE.search(line)
+        if h and not TAG_RE.sub("", line[: h.start()]).strip():     # e.g. "<center><h3>…</h3>"
+            found.append(HeadingMatch(start=offsets[i], level=int(h.group(1)), raw=h.group(2), style="html"))
+            para_start = None
+            continue
+        if _is_paragraph_line(line):
+            if para_start is None:
+                para_start = i
+        else:
+            para_start = None
+    return found
+
+
+def to_heading(m: HeadingMatch) -> Heading:
+    cleaned = clean_heading(m.raw)
+    structural = bool(cleaned) and cleaned.lower().rstrip("?.") not in config.NON_STRUCTURAL_HEADINGS
+    return Heading(level=m.level, text=cleaned, structural=structural)
 
 
 def find_headings(text: str) -> list[Heading]:
-    found: list[tuple[int, int, str]] = []          # (line number, level, raw text)
-    fenced = False
-    for lineno, line in enumerate(text.split("\n")):
-        if FENCE_RE.match(line):
-            fenced = not fenced
-            continue
-        m = None if fenced else MD_HEADING_RE.match(line)
-        if m:
-            found.append((lineno, len(m.group(1)), m.group(2)))
-    for m in HTML_HEADING_RE.finditer(text):
-        found.append((text[: m.start()].count("\n"), int(m.group(1)), m.group(2)))
-    headings = []
-    for _, level, raw in sorted(found):
-        cleaned = clean_heading(raw)
-        structural = bool(cleaned) and cleaned.lower().rstrip("?.") not in config.NON_STRUCTURAL_HEADINGS
-        headings.append(Heading(level=level, text=cleaned, structural=structural))
-    return headings
+    return [to_heading(m) for m in scan_headings(text)]
 
 
-def first_line_is_heading(text: str) -> bool:
-    for line in text.split("\n"):
-        if line.strip():
-            return bool(MD_HEADING_RE.match(line) or HTML_HEADING_RE.match(line.strip()))
-    return False
+def is_trivial(text: str) -> bool:
+    """Only blank lines and thematic breaks (e.g. a leading '---')."""
+    return all(not line.strip() or THEMATIC_BREAK_RE.match(line) for line in text.split("\n"))
+
+
+def split_spans(text: str) -> list[tuple[int, int, Optional[Heading]]]:
+    """(start, end, heading) slices of a markdown text, cut at each heading.
+
+    The slices are contiguous and cover the text exactly. A leading slice that holds only
+    blank lines or thematic breaks is merged into the first heading's slice.
+    """
+    matches = scan_headings(text)
+    cuts = [m.start for m in matches]
+    heads = [to_heading(m) for m in matches]
+    if not text:
+        return []
+    bounds: list[tuple[int, Optional[Heading]]] = []
+    if not cuts or cuts[0] > 0:
+        bounds.append((0, None))
+    bounds += list(zip(cuts, heads))
+    if len(bounds) > 1 and bounds[0][1] is None and is_trivial(text[: bounds[1][0]]):
+        bounds = [(0, bounds[1][1])] + bounds[2:]
+    out = []
+    for i, (start, head) in enumerate(bounds):
+        end = bounds[i + 1][0] if i + 1 < len(bounds) else len(text)
+        out.append((start, end, head))
+    return out
 
 
 def unescaped_dollars(text: str) -> int:
@@ -282,10 +420,65 @@ def libraries_in(code: str) -> list[str]:
     return sorted(libs)
 
 
+LOG_LINE_RE = re.compile(
+    r"^\s*(Requirement already satisfied|Collecting |Downloading|Installing collected|Successfully "
+    r"|Building wheel|Using cached|Attempting uninstall|Found existing|Uninstalling|inflating:|creating:"
+    r"|extracting:|Archive:|--\d{4}-\d\d-\d\d|Resolving |Connecting to|HTTP request sent|Length: |Saving to"
+    r"|Epoch \d+|\d+/\d+ \[|\[nltk_data\]|WARNING|Cloning into|Get:\d|Hit:\d|Ign:\d|Reading package"
+    r"|Building dependency|Reading state|Selecting previously|Preparing to unpack|Unpacking |Setting up "
+    r"|Processing triggers|From: |To: |\S+\.py:\d+: \w*Warning|  warnings\.warn|\d+%\||\[t-SNE\]"
+    r"|total \d+$|[d-][rwx-]{9}\.?\s|UNRAR |Extracting from|Extracting  )"
+    r"|━|\[=+>?\.*\]|\d+/\d+ [━=]|[kMG]B/s|\beta \d+:\d\d"
+)
+DUMP_HINT_RE = re.compile(r"^\[\d+ rows x \d+ columns\]$|^Name: .*dtype: |^dtype: |^\s*array\(\[", re.M)
+STRONG_LOG_START_RE = re.compile(
+    r"^\s*(Requirement already satisfied|Collecting |Downloading|Looking in indexes|Streaming output truncated"
+    r"|Archive:|inflating:|Epoch \d+|--\d{4}-\d\d-\d\d|Cloning into|Reading package lists|\[nltk_data\]"
+    r"|Get:\d|Hit:\d|\S+\.py:\d+: \w*Warning)"
+)
+REPR_START_RE = re.compile(
+    r"^\s*(\[\{|\[\(|\{['\"\d]|\(|\[\[|\[\d|\[['\"<]|<\w+[ .]|[A-Z]\w*\(|array\(|tensor\(|Index\(|tf\.Tensor|Model: |[┏┃│])"
+)
+SEPARATOR_LINE_RE = re.compile(r"^[\s=\-_*#~.·•━─│┃┏┳┓┗┻┛╇╈╍┄]+$")
+WORD_RE = re.compile(r"[A-Za-z]{2,}")
+
+
+def classify_output(kind: str, content_type: str, text: str, stream_name: str = "") -> OutputRole:
+    """Rule-based role of an output, decided on the full text before any truncation.
+
+    error          error outputs
+    log            stderr, installs/downloads/unzips, training progress, warnings
+    dataframe_dump table or pandas/numpy repr longer than LARGE_TABLE_LINES lines
+    result         short tables, values, metrics, object reprs, model summaries
+    teaching_text  printed prose: most lines are sentences/phrases (e.g. a printed lesson)
+    """
+    if kind == "error" or content_type == "error":
+        return "error"
+    lines = [l for l in text.split("\n") if l.strip() and not SEPARATOR_LINE_RE.match(l)]
+    if stream_name == "stderr" or not lines:
+        return "log" if stream_name == "stderr" else "result"
+    if STRONG_LOG_START_RE.match(lines[0]) or \
+            sum(bool(LOG_LINE_RE.search(l)) for l in lines) / len(lines) >= 0.3:
+        return "log"
+    if content_type == "table" or DUMP_HINT_RE.search(text):
+        return "dataframe_dump" if len(lines) > config.LARGE_TABLE_LINES else "result"
+    if REPR_START_RE.match(lines[0]) or "Total params:" in text or \
+            sum(l.lstrip()[:1] in "┏┃│┡└├" for l in lines) / len(lines) >= 0.3:
+        return "result"                                  # object reprs, model summaries
+    body = "".join(text.split())
+    if body and sum(ch.isdigit() for ch in body) / len(body) > 0.15:
+        return "result"                                  # number-heavy printouts: metrics, scores
+    words = sum(len(WORD_RE.findall(l)) for l in lines)
+    wordy = sum(len(WORD_RE.findall(l)) >= 3 for l in lines)
+    if words >= 25 and wordy / len(lines) >= 0.5:
+        return "teaching_text"
+    return "result"
+
+
 def parse_output(o: dict) -> Output:
     kind = o.get("output_type", "")
     if kind == "stream":
-        return _text_output(kind, "text", to_text(o.get("text", "")), ["text/plain"])
+        return _text_output(kind, "text", to_text(o.get("text", "")), ["text/plain"], o.get("name", ""))
     if kind == "error":
         text = f"{o.get('ename', '')}: {o.get('evalue', '')}"
         return _text_output(kind, "error", text, [])
@@ -308,12 +501,16 @@ def parse_output(o: dict) -> Output:
     return Output(output_type=kind, content_type="other", content="", mime_types=mimes)
 
 
-def _text_output(kind: str, content_type: str, text: str, mimes: list[str]) -> Output:
+def _text_output(kind: str, content_type: str, text: str, mimes: list[str], stream_name: str = "") -> Output:
     text = clean_text(ANSI_RE.sub("", text))
-    truncated = len(text) > config.MAX_OUTPUT_CHARS
+    role = classify_output(kind, content_type, text, stream_name)
+    limit = config.MAX_TEACHING_OUTPUT_CHARS if role in ("teaching_text", "result") else config.MAX_OUTPUT_CHARS
+    original_length = len(text)
+    truncated = original_length > limit
     if truncated:
-        text = text[: config.MAX_OUTPUT_CHARS]
-    return Output(output_type=kind, content_type=content_type, content=text, mime_types=mimes, truncated=truncated)
+        text = text[:limit]
+    return Output(output_type=kind, content_type=content_type, content=text, mime_types=mimes,
+                  output_role=role, truncated=truncated, original_length=original_length)
 
 
 # ----------------------------------------------------------------------------
@@ -383,19 +580,47 @@ def parse_notebook(path: Path) -> tuple[NotebookRecord, list[CellRecord]]:
         raw_source = to_text(cell.get("source", ""))
         is_text = ctype in ("markdown", "raw")
         content = clean_text(raw_source, strip_data_uris=is_text)
-        headings = find_headings(content) if ctype == "markdown" else []
-        structural = [h for h in headings if h.structural]
-
-        # A heading on the cell's first line names this cell's own section.
-        if structural and first_line_is_heading(content):
-            push(structural[0])
-            later = structural[1:]
+        cell_id = f"{nb_id}_cell_{idx:03d}"
+        headings: list[Heading] = []
+        spans: list[Span] = []
+        if ctype == "markdown" and content.strip():
+            for start, end, head in split_spans(content):
+                if head is not None:
+                    headings.append(head)
+                    if head.structural:
+                        push(head)
+                span_path = [t for _, t in stack]
+                if head is None:
+                    kind = "continuation" if span_path else "preamble"
+                else:
+                    kind = "heading" if head.structural else "label"
+                piece = content[start:end]
+                sig = math_signals(piece)
+                spans.append(Span(
+                    span_id=f"{cell_id}_span_{len(spans):03d}", cell_id=cell_id, notebook_id=nb_id,
+                    span_index=len(spans), kind=kind,
+                    heading_level=head.level if head else None, heading_text=head.text if head else None,
+                    section_title=span_path[-1] if span_path else config.DEFAULT_SECTION, section_path=span_path,
+                    content=piece, char_start=start, char_end=end,
+                    contains_math=sig["contains_math"],
+                    contains_table=bool(PIPE_TABLE_SEP_RE.search(piece) or HTML_TABLE_RE.search(piece)),
+                    contains_list=bool(LIST_RE.search("\n".join(outside_fences(piece)))),
+                ))
+        if spans:
+            # Cell-level section (kept for compatibility): the span holding the most text.
+            primary = max(spans, key=lambda sp: (len(sp.content.strip()), -sp.span_index))
+            section_path = primary.section_path
         else:
-            later = structural
-        section_path = [t for _, t in stack]
+            section_path = [t for _, t in stack]       # code / empty cells: the governing section
         section = section_path[-1] if section_path else config.DEFAULT_SECTION
-        for h in later:
-            push(h)
+        sections_in_cell = {tuple(sp.section_path) for sp in spans if not is_trivial(sp.content)}
+        multiple = len(sections_in_cell) > 1
+        if multiple:
+            accuracy_status = "fixed"
+        elif spans and all(sp.kind == "preamble" for sp in spans):
+            accuracy_status = "preamble"
+        else:
+            accuracy_status = "ok"
 
         warnings: list[str] = []
         math = math_signals(content) if is_text else {
@@ -424,7 +649,7 @@ def parse_notebook(path: Path) -> tuple[NotebookRecord, list[CellRecord]]:
         if is_empty:
             warnings.append("empty_cell")
         cells.append(CellRecord(
-            cell_id=f"{nb_id}_cell_{idx:03d}",
+            cell_id=cell_id,
             notebook_id=nb_id,
             notebook_title=title,
             file_name=path.name,
@@ -433,6 +658,10 @@ def parse_notebook(path: Path) -> tuple[NotebookRecord, list[CellRecord]]:
             section=section,
             section_path=section_path,
             headings=headings,
+            spans=spans,
+            span_count=len(spans),
+            has_multiple_sections=multiple,
+            section_accuracy_status=accuracy_status,
             content=content,
             content_length_chars=len(content),
             is_empty=is_empty,
@@ -482,10 +711,12 @@ def _summarize(record: NotebookRecord, cells: list[CellRecord], libraries: set[s
     record.error_output_cells = sum("error_output" in c.warnings for c in cells)
     record.heading_count = len(record.outline)
     record.libraries = sorted(libraries)
+    record.span_count = sum(c.span_count for c in cells)
+    record.multi_section_cells = sum(c.has_multiple_sections for c in cells)
+    record.preamble_only_cells = sum(c.section_accuracy_status == "preamble" for c in cells)
+    record.teaching_outputs = sum(o.output_role == "teaching_text" for c in cells for o in c.outputs)
 
     non_empty = [c for c in cells if not c.is_empty]
-    with_section = [c for c in non_empty if c.section != config.DEFAULT_SECTION]
-    record.section_coverage = round(len(with_section) / len(non_empty), 4) if non_empty else 0.0
 
     w = record.warnings
     if record.total_cells == 0:
@@ -494,8 +725,6 @@ def _summarize(record: NotebookRecord, cells: list[CellRecord], libraries: set[s
         w.append("no_content")
     if record.heading_count == 0:
         w.append("no_headings")
-    if record.section_coverage < config.MIN_SECTION_COVERAGE:
-        w.append("low_section_coverage")
     if record.total_cells < config.SMALL_NOTEBOOK_CELLS:
         w.append("small_notebook")
     if record.empty_cells:
