@@ -1,5 +1,91 @@
 # Changelog
 
+## phase1-v2 — Issue #1: Tools and Resources inventories (2026-10-27)
+
+The Tools and Resources inventories are now built from the classified corpus
+(spans + content roles). They replace the phase1-v1 inventories that `src/assets.py` used to build.
+
+### Modules
+
+- `src/tools_inventory.py` → `tools.jsonl` and `tool_exclusions.jsonl`.
+- `src/resources_inventory.py` → `resources.jsonl`, `resources_report.md` and `images/`.
+- `src/tool_concept_linker.py` → `tool_concept_links.jsonl`.
+- `src/assets.py` now holds the shared helpers. Its `run()` builds all three and writes
+  `tools_report.md`: `python src/assets.py`.
+
+### Tools
+
+- One Tool per retrieval-eligible code cell in a tool role: 1,459 Tools.
+- Every other code cell (675) is in `tool_exclusions.jsonl` with its role and a reason. That
+  includes the 4 tool-role cells flagged `invalid_syntax`.
+- Each Tool has:
+  - Type, title, description and purpose.
+  - Inputs and outputs.
+  - Libraries, concepts and topic IDs.
+  - Source (notebook, section, cell).
+  - Quality flags: self-contained, has output, nearby explanation, parses, complexity, and
+    suitable-for-answer with reasons.
+  - The IDs of the explanation spans it came from.
+- 1,328 are suitable for answers as they are. The other 131 are one-line cells with no output.
+
+### Resources
+
+- One resource per image: 1,102 markdown images (all 972 image-referencing cells) and 324 plot
+  outputs.
+- Each resource records:
+  - The span holding the image.
+  - Its caption: alt text, the same span or nearby markdown.
+  - Linked concept spans and tools.
+  - Availability: embedded / google_drive / external_url / missing.
+  - Retrieval status.
+  - A vision priority for the later OCR/VLM pass.
+- Image content is never read (`content_extracted: false`). A type is set only from structural
+  evidence:
+  - plot: code output.
+  - decorative: ≤ 48 px.
+  - external_reference: hot-linked from a third-party site.
+  - The author's alt text, when it names a type.
+- Everything else is `unclassified` (1,082), and 1,055 of those are queued at high vision
+  priority.
+- `Screenshot_…png` filenames are kept as a `capture_hint`, not used as a type. A spot check
+  found handwritten formulas and slides behind such names.
+
+### Tool–Concept links
+
+- Each candidate is a teaching, eligible span in the tool's notebook, scored from evidence:
+  - Same section, or closest ancestor section with prose.
+  - Proximity before the tool.
+  - Being the tool's nearest explanation.
+  - Shared function/method names.
+  - Shared topic.
+- Links ≥ 0.55 get implements / demonstrates / visualizes from the tool's role, but only with
+  structural evidence; otherwise `supports`.
+- Below 0.55, one `uncertain` link is kept if ≥ 0.35; weaker evidence makes no link.
+- Result:
+  - 862 tools linked.
+  - 358 with only an uncertain link.
+  - 239 unlinked. None of these has prose in its section.
+
+### Evaluation
+
+- Tools are renumbered because only eligible cells are Tools now.
+- `evaluation/golden_prompts.jsonl` moves `TOOL_0187` → `TOOL_0136` and `TOOL_0857` →
+  `TOOL_0604`, mapped by source cell. Resource IDs are unchanged.
+
+### Review
+
+- `data/processed/qa/inventory_review_sample.csv` holds 20 Tools (4 per type) and 20 Resources
+  (stratified).
+- Tools: type, provenance and flags 20/20. Links 18/19, first pass: one proximity +
+  identifier link was typed `implements`. Fixed by the structural-evidence rule.
+- Resources: 20/20. 0 critical misclassifications.
+
+### Tests
+
+- `tests/test_tools_inventory.py` and `tests/test_resources_inventory.py` share a synthetic
+  notebook in `tests/inventory_fixture.py`. Corpus checks run locally.
+- `tests/test_assets.py` now covers only the shared helpers.
+
 ## phase1-v2 — PH1-ROLE-001: content roles (2026-10-27)
 
 Every markdown span and code cell now has a `content_role`, so chunking and retrieval can keep
