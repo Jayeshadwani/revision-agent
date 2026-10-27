@@ -1,6 +1,6 @@
 # Response templates and success criteria
 
-This file defines how the agent must format each answer and how each answer is scored. Every record in `golden_set.jsonl` and `retrieval_set.jsonl` names its template in `answer_template` and lists its `required_sections` and `optional_sections`; those values come from the table in §2.
+This file defines how the agent must format each answer and how each answer is scored. Every prompt in `golden_prompts.jsonl` and `retrieval_prompts.jsonl` names its template in `answer_template` and lists its `required_sections` and `optional_sections`; those values come from the table in §2.
 
 ## 1. Universal rules
 
@@ -24,20 +24,30 @@ Cite inline as `[S1]`, `[S1][S3]`. End every response with a `## Sources` sectio
 [S2] 14 - Classification metrics.ipynb — "Example", cell 9
 ```
 
-In the Sources list, cell numbers are 1-based, as Colab shows them. In `golden_set.jsonl`, `cell_ids` are 0-based positions in the notebook's cell list, so displayed cell = `cell_id + 1`. After generation, a validator checks that every cited ID exists in the retrieved context and that every listed source is cited at least once.
+In the Sources list, cell numbers are 1-based, as Colab shows them. In the prompt files, `cell_ids` are 0-based positions in the notebook's cell list, so displayed cell = `cell_id + 1`. After generation, a validator checks that every cited ID exists in the retrieved context and that every listed source is cited at least once.
+
+A source can be a concept chunk, a tool (code) or a resource (image). Name tools and resources by their IDs so they can be traced:
+
+```text
+[S1] 14 - Classification metrics.ipynb — "Precision", cell 18
+[S2] TOOL_0187 — 06 - Amazon sales data analysis 2.ipynb, cell 15
+[S3] RES_0074 — 08 - Analyzing Sachin Tendulkars ODI Career.ipynb, cell 33 (image)
+```
+
+Only a resource with a caption or transcription in the retrieved context may be described. If an answer depends on an image whose content isn't available, say so and treat that part as missing (§3.11); never describe what the image probably shows.
 
 ## 2. Question type → template → sections
 
 Each `## Heading` in a response corresponds to one section ID: lowercase the heading and replace each run of non-alphanumeric characters with `_` (so `## Step-by-step derivation` becomes `step_by_step_derivation` and `## Inputs / outputs` becomes `inputs_outputs`). The refusal template has no headings; its sections are identified by content.
 
-| `question_type` | `answer_template` | Required sections | Optional sections |
+| `prompt_type` | `answer_template` | Required sections | Optional sections |
 |---|---|---|---|
-| `definition`, `concept_explanation` | `concept_explanation` (§3.1) | `answer`, `intuition`, `sources` | `mathematical_form`, `implementation_from_notes`, `common_mistakes` |
+| `concept_explanation`, `image_dependent_explanation` | `concept_explanation` (§3.1) | `answer`, `intuition`, `sources` | `mathematical_form`, `implementation_from_notes`, `common_mistakes` |
 | `formula_recall` | `formula` (§3.2) | `formula`, `variable_definitions`, `sources` | `intuition`, `worked_example`, `implementation_from_notes` |
 | `math_derivation` | `mathematical_explanation` (§3.3) | `goal`, `starting_point`, `variables`, `step_by_step_derivation`, `final_result`, `sources` | `interpretation`, `implementation_from_notes`, `evidence_completeness` |
 | `comparison` | `comparison` (§3.4) | `short_answer`, `comparison_table`, `key_relationship`, `sources` | `recommendation` |
-| `code_implementation` | `code_implementation` (§3.5) | `purpose`, `code_from_notes`, `explanation`, `sources` | `inputs_outputs`, `when_to_use` |
-| `code_explanation` | `code_explanation` (§3.6) | `purpose`, `code`, `line_by_line_explanation`, `sources` | `inputs_outputs`, `common_mistake` |
+| `tool_request` | `code_implementation` (§3.5) | `purpose`, `code_from_notes`, `explanation`, `sources` | `inputs_outputs`, `when_to_use` |
+| `tool_explanation` | `code_explanation` (§3.6) | `purpose`, `code`, `line_by_line_explanation`, `sources` | `inputs_outputs`, `common_mistake` |
 | `debugging` | `misconception` (§3.7) | `common_mistake`, `why_it_is_a_problem`, `correct_approach`, `sources` | none |
 | `multi_notebook_synthesis` | `synthesis` (§3.8) | `short_answer`, `connection_between_concepts`, `evidence_from_notebooks`, `sources` | none |
 | `topic_recommendation` | `topic_recommendation` (§3.9) | `selected_topic`, `recommended_topics`, `suggested_revision_order`, `sources` | none |
@@ -46,7 +56,7 @@ Each `## Heading` in a response corresponds to one section ID: lowercase the hea
 | `revision_plan` (not in the set yet) | `revision_plan` (§3.13) | `selected_topic`, `recommended_topics`, `suggested_revision_order`, `sources` | none |
 | conflicting sources (any type) | §3.12 | conflict statement citing both sources | none |
 
-Optional sections appear only when retrieved evidence supports them. For `concept_explanation`, `requires_math` makes `mathematical_form` required and `requires_code` makes `implementation_from_notes` required. In a `mathematical_explanation`, `evidence_completeness` is required whenever the notes don't contain the full derivation.
+Optional sections appear only when retrieved evidence supports them. For `concept_explanation`, `requires_math` makes `mathematical_form` required and `requires_tool` makes `implementation_from_notes` required. In a `mathematical_explanation`, `evidence_completeness` is required whenever the notes don't contain the full derivation.
 
 ## 3. Templates
 
@@ -355,13 +365,13 @@ Each record's `evaluation.human_rubric` lists the dimensions that apply to it, w
 | `structure` | Wrong template | Minor format issues | Correct template and all required sections | All |
 | `citation_quality` | Missing or invalid | Present but weak | Valid and support their claims | All except refusal |
 | `math_logic` | Wrong or invented steps | Partly logical | Every step stated, valid and sourced; gaps declared | `requires_math` |
-| `code_relevance` | Irrelevant or invented | Partly relevant | Relevant, minimal, traceable to a notebook | `requires_code` |
+| `code_relevance` | Irrelevant or invented | Partly relevant | Relevant, minimal, traceable to a notebook tool | `requires_tool` |
 | `recommendation_quality` | Unsupported links | One weak link | Exactly two evidence-backed relationships | `topic_recommendation` |
 | `refusal` | Hallucinates | Partial refusal | Correct refusal, or correct supported/missing split | `refusal`, `partial_answer` |
 
 Each record also carries automatic thresholds in `evaluation`: `min_faithfulness`, `min_correctness`, `min_context_recall` and `min_citation_validity`.
 
-| `question_type` | faithfulness | correctness | context recall | citation validity |
+| `prompt_type` | faithfulness | correctness | context recall | citation validity |
 |---|---:|---:|---:|---:|
 | default | 0.9 | 0.8 | 0.75 | 1.0 |
 | `math_derivation` | 0.9 | 0.75 | 0.8 | 1.0 |
@@ -407,4 +417,4 @@ The baseline isn't complete until it meets all of these on the golden set:
 | Topic recommendations judged relevant | ≥ 70% |
 | No outside knowledge (no unsupported factual claims) | ≥ 95% |
 
-These are first-baseline targets, not production targets. None of them has been measured yet. Report them per `question_type` and per `difficulty` as well as overall, and raise them once the baseline is stable.
+These are first-baseline targets, not production targets. None of them has been measured yet. Report them per `prompt_type` and per `difficulty` as well as overall, and raise them once the baseline is stable.

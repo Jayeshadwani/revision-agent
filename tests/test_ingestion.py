@@ -198,15 +198,15 @@ class CorpusTests(unittest.TestCase):
                      config.TOPIC_CANDIDATES_CSV, config.REPORT_MD):
             self.assertTrue(filecmp.cmp(self.out1 / name, self.out2 / name, shallow=False), name)
 
-    def test_golden_set_sources_exist(self):
-        """Every cell cited by the golden set exists, in the stated notebook."""
-        golden = ROOT / "evaluation" / "golden_set.jsonl"
+    def test_golden_prompt_sources_exist(self):
+        """Every cell cited by the golden prompts exists, in the stated notebook."""
+        golden = ROOT / "evaluation" / "golden_prompts.jsonl"
         ids = {c.cell_id for c in self.result["cells"]}
         for line in golden.read_text(encoding="utf-8").splitlines():
             q = json.loads(line)
             for s in q["expected_sources"]:
                 for i in s["cell_ids"]:
-                    self.assertIn(f"{s['notebook_id']}_cell_{i:03d}", ids, q["question_id"])
+                    self.assertIn(f"{s['notebook_id']}_cell_{i:03d}", ids, q["prompt_id"])
 
 
 if __name__ == "__main__":
