@@ -30,6 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import config  # noqa: E402
+import content_role_classifier  # noqa: E402
 from notebook_parser import (  # noqa: E402
     THEMATIC_BREAK_RE, CellRecord, NotebookRecord, parse_notebook, scan_headings, to_heading,
 )
@@ -604,6 +605,7 @@ def run(raw_dir: Path, out_dir: Path, quiet: bool = False) -> dict:
             nb.legacy_section_mislabel_rate = round(v["legacy_wrong"] / v["total"], 4)
             if nb.section_mislabel_rate >= config.MAX_SECTION_MISLABEL_RATE:
                 nb.warnings.append(f"section_mislabel_rate:{nb.section_mislabel_rate:.1%}")
+    roles = content_role_classifier.classify_cells(cells)
     candidates, top_candidates = build_topic_candidates(notebooks, cells, catalog)
     checks = acceptance_checks(notebooks, cells, raw_dir, catalog, acc)
 
@@ -614,13 +616,16 @@ def run(raw_dir: Path, out_dir: Path, quiet: bool = False) -> dict:
     write_text(out_dir / config.TOPIC_CANDIDATES_CSV,
                to_csv(CANDIDATE_HEADER, [[r[h] for h in CANDIDATE_HEADER] for r in candidates]))
     write_text(out_dir / config.REPORT_MD, build_report(notebooks, cells, checks, candidates, fingerprint, acc))
+    write_text(out_dir / content_role_classifier.SPANS_JSONL, content_role_classifier.spans_jsonl(cells))
+    write_text(out_dir / content_role_classifier.REPORT_MD, content_role_classifier.build_report(
+        cells, roles, out_dir / content_role_classifier.QC_CSV))
 
     failed_checks = [name for name, passed, _ in checks if not passed]
     if not quiet:
         print(f"\n{len(notebooks)} notebooks, {len(cells)} cells, {len(candidates)} topic candidates -> {out_dir}")
         print("acceptance checks: " + ("all passed" if not failed_checks else "FAILED " + ", ".join(failed_checks)))
     return {"notebooks": notebooks, "cells": cells, "checks": checks, "failed_checks": failed_checks,
-            "accuracy": acc}
+            "accuracy": acc, "roles": roles}
 
 
 def main() -> int:

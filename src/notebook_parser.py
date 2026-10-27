@@ -48,6 +48,7 @@ class Output(BaseModel):
     output_role: OutputRole = "result"
     truncated: bool = False          # content was cut at the limit for its role
     original_length: int = 0         # characters before truncation
+    retrieval_eligible: Optional[bool] = None   # teaching_text/result text outputs (PH1-ROLE-001)
 
 
 class Heading(BaseModel):
@@ -84,6 +85,14 @@ class Span(BaseModel):
     contains_math: bool
     contains_table: bool
     contains_list: bool
+    # Content role (PH1-ROLE-001, filled by content_role_classifier)
+    content_role: Optional[str] = None
+    role_confidence: Optional[float] = None
+    role_method: Optional[str] = None         # rule | llm | manual
+    role_reason: Optional[str] = None
+    retrieval_eligible: Optional[bool] = None  # eligible for default Concept/Tool retrieval
+    retrieval_index: Optional[str] = None      # concepts | tools | resources | support | none
+    role_flags: list[str] = []                 # e.g. embedded_instructor_note, embedded_quiz, invalid_syntax
 
 
 class CellRecord(BaseModel):
@@ -123,6 +132,14 @@ class CellRecord(BaseModel):
     warnings: list[str]
     ingested_at: str
     source_hash: str
+    # Content role for code cells (markdown roles live on spans)
+    content_role: Optional[str] = None
+    role_confidence: Optional[float] = None
+    role_method: Optional[str] = None         # rule | llm | manual
+    role_reason: Optional[str] = None
+    retrieval_eligible: Optional[bool] = None  # eligible for default Concept/Tool retrieval
+    retrieval_index: Optional[str] = None      # concepts | tools | resources | support | none
+    role_flags: list[str] = []                 # e.g. embedded_instructor_note, embedded_quiz, invalid_syntax
 
 
 class NotebookRecord(BaseModel):

@@ -1,5 +1,74 @@
 # Changelog
 
+## phase1-v2 — PH1-ROLE-001: content roles (2026-10-27)
+
+Every markdown span and code cell now has a `content_role`, so chunking and retrieval can keep
+instructor notes, quizzes, agendas, setup code and data loaders out of default answers.
+
+### Fields
+
+- Spans (`cells.jsonl` → `spans`, and the new `data/processed/spans.jsonl`) and code cells get
+  `content_role`, `role_confidence`, `role_method` (`rule` | `llm` | `manual`), `role_reason`,
+  `retrieval_eligible`, plus:
+  - `retrieval_index`: `concepts` | `tools` | `resources` | `support` | `none`. This says where an
+    excluded record still lives (e.g. a quiz goes to `support`, an image-only span to `resources`).
+  - `role_flags`: `embedded_instructor_note`, `embedded_quiz`, `invalid_syntax`,
+    `instructor_optional_teaching`. These mark teaching records that need stripping at chunking.
+- Outputs get `retrieval_eligible` (`teaching_text` and `result` only).
+- Raw cells (markdown cells without spans, raw cells) carry no role.
+
+### How roles are assigned (`src/content_role_classifier.py`)
+
+1. **Rules** decide most records. Order matters:
+   - Markdown: preamble → instructor note → quiz/MCQ/practice → agenda → assessment links →
+     business heading / scenario framing → logistics → heading-only / image-only /
+     formatting-only → question prompts → teaching.
+   - Code: empty/comments → setup (pip, config, seeds, locale) → shell inspection → timing →
+     statement-level plumbing (every statement is an import, config, loader, literal constant
+     or display → `data_loading` / `environment_setup` / `non_teaching`) → bare inspection →
+     the shared Tools rules from `src/assets.py`.
+2. **Records the rules cannot decide** are queued: instructor markers mixed with teaching text,
+   lettered options without an answer key, and code that is not valid Python. They were labelled
+   offline from the text plus section path only (51 labels in `data/labels/role_labels.jsonl`,
+   local). Each label is keyed by record id and a content hash; a stale label is ignored and the
+   record goes back to the queue. `manual` labels override rules.
+3. `python src/content_role_classifier.py --export-queue q.jsonl` writes anything still unlabelled.
+   `python src/ingestion.py` runs the classifier as part of the pipeline.
+
+### Retrieval eligibility
+
+- Eligible:
+  - `teaching` spans with real text.
+  - `tool_*` and `visualization` cells, unless flagged `invalid_syntax`.
+- Not eligible:
+  - Heading-only and formatting-only spans (kept as context).
+  - Image-only spans and image credits (Resources).
+  - Every support role.
+- `business_context`: the first occurrence in a notebook goes to `support`, repeats to `none`.
+
+### Results
+
+- 5,308 spans and 2,134 code cells classified: 7,391 by rule, 51 by label, 0 unknown, empty queue.
+- QC, all in `data/processed/qa/content_role_review_sample.csv`:
+  - Ticket's stratified 100: first pass 93% correct with 2 critical false positives (a timing print
+    and a locale hack labelled as tools). Both are fixed. After fixes it scores 100%, but that is
+    in-sample.
+  - After the rules were frozen, 100 fresh random retrieval-eligible records were checked: 97%
+    correct, 1 critical false positive. That was GPU-conditional hyperparameter constants inside
+    an `if`. The other two errors were plotting-helper calls labelled `tool_demonstration`.
+
+### Tests
+
+`tests/test_content_roles.py` has 34 tests:
+- Each markdown and code rule.
+- Label resolution, stale-hash invalidation, manual override and taxonomy validation.
+- Corpus checks (run when `data/processed` is built):
+  - Every record has the role fields.
+  - Unknown rate ≤ 10%.
+  - Excluded roles are never eligible.
+  - Outputs have eligibility.
+  - `spans.jsonl` matches `cells.jsonl`.
+
 ## phase1-v2 — PH1-FIX-001: sections per heading span (2026-10-27)
 
 Manual QA (PH1-QA-001) found that one section per cell mislabelled 24.5% of markdown text: long
