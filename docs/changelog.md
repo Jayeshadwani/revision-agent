@@ -1,5 +1,30 @@
 # Changelog
 
+## phase3-v1 — PH3-EMBED-001 (issue #5): embeddings and dense vector index (2026-10-27)
+
+- New modules:
+  - `src/embeddings.py`: config, model tokenizer, OpenAI embedder, embedding texts.
+  - `src/vector_index.py`: Qdrant local mode, plus an in-memory index with the same interface.
+  - `src/index_builder.py`: idempotent sync, report, spot check.
+  - See `docs/embeddings.md`.
+- **Scope:** 862 concept + 1,312 tool chunks = 2,174 vectors in `revision_agent_v1`. Resource chunks
+  and the 10 duplicate tool chunks are never embedded.
+- **Token counts:**
+  - Counted with the model tokenizer (tiktoken, cl100k_base). There is no silent fallback to the
+    PH2 estimate.
+  - A chunk above 8,192 tokens fails loudly instead of being truncated. Chunks above 1,500
+    tokens are flagged.
+- **Syncing:**
+  - Re-running skips unchanged chunks, re-embeds changed ones and deletes removed ones.
+  - It refuses to mix models or versions in one collection.
+  - Point IDs are UUIDv5s of the chunk IDs, because Qdrant needs integer or UUID IDs.
+- **Requirements:** `openai`, `tiktoken`, `qdrant-client`.
+- **Tests:**
+  - `tests/test_embeddings.py` and `tests/test_vector_index.py` add 34 tests and need no network.
+    The Qdrant and tiktoken cases skip when those packages are missing.
+  - The real index and `embedding_report.md` are produced by running `python src/index_builder.py`
+    with an API key.
+
 ## phase2 — PH2-CHUNK-001 (issue #3): Concept, Tool and Resource chunks (2026-10-27)
 
 ### Chunks
