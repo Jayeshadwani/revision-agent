@@ -91,6 +91,23 @@ class MarkdownRules(unittest.TestCase):
     def test_agenda(self):
         self.assertEqual(span_role("## Agenda\n- Bias\n- Variance\n- Regularization"), ("agenda", False))
 
+    def test_topic_list_under_agenda(self):
+        cells, _ = classify([md("## Agenda\n"), md("### Array Operations\n1. Sort\n2. Matrix Multiplication\n   a. `np.dot`"),
+                             md("### What is broadcasting?\n- Broadcasting stretches the smaller array so that "
+                                "element-wise operations work on arrays of different shapes.")])
+        self.assertEqual(cells[1].spans[-1].content_role, "agenda")
+        self.assertEqual(cells[2].spans[-1].content_role, "teaching")      # a lesson under an Agenda H1
+
+    def test_heading_inside_quiz_container(self):
+        cells, _ = classify([md("## QUIZ\n"), md("#### Question: What happens to M if v decreases?\n"
+                                                  "M should increase, because each learner contributes less.")])
+        self.assertEqual(cells[1].spans[-1].content_role, "quiz")
+        # A question used as a heading is not a container for the lesson below it
+        cells, _ = classify([md("# Quiz 1: Batch normalization helps because\n"),
+                             md("## Modification #3\nAdding L2 regularization to the dense layers reduced the gap "
+                                "between train and validation accuracy, so the model generalizes better.")])
+        self.assertEqual(cells[1].spans[-1].content_role, "teaching")
+
     def test_business_context_first_and_repeat(self):
         cells, _ = classify([md("## Business Context\nA retailer wants to forecast demand for 500 stores."),
                              md("## Business Context\nA retailer wants to forecast demand for 500 stores.")])
@@ -169,6 +186,18 @@ class CodeRules(unittest.TestCase):
         role, elig = code_role("model = LogisticRegression()\nmodel.fit(X_train, y_train)\nmodel.score(X_test, y_test)")
         self.assertIn(role, crc.TOOL_ROLES)
         self.assertTrue(elig)
+
+    def test_plumbing_inside_if_and_with(self):
+        self.assertEqual(code_role("if gpu:\n    BATCH = 512\nelse:\n    BATCH = 32"), ("non_teaching", False))
+        self.assertEqual(code_role("with open('X.pickle', 'rb') as h:\n    X = pickle.load(h)"), ("data_loading", False))
+        self.assertEqual(code_role("IMG = 'cat.jpg'\nif IS_COLAB:\n  !gdown 1abc --output cat.jpg\n  IMG = 'cat.jpg'"),
+                         ("data_loading", False))
+        role, elig = code_role("if fit:\n    model.fit(X, y)\n    score = model.score(X, y)")
+        self.assertTrue(elig, role)
+
+    def test_shell_download_with_constants(self):
+        self.assertEqual(code_role("id = '1M5'\nprint('https://drive.google.com/uc?id=' + id)\n!wget 'https://x/y.csv'"),
+                         ("data_loading", False))
 
     def test_comments_only(self):
         self.assertEqual(code_role("# model.fit(X, y)\n# TODO"), ("non_teaching", False))

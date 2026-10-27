@@ -176,6 +176,16 @@ def note_block_end(text: str, pos: int) -> int:
     return end
 
 
+QUIZ_CONTAINER_RE = re.compile(r"^(quiz|quizzes|mcqs?|msqs?|practice\s+(questions?|problems?|exercises?)|"
+                               r"assessments?|post\s*read\s*(questions|quiz))(\s*\d+)?$", re.I)
+
+
+def ancestors(span) -> list[str]:
+    """Section titles above the span's own heading (the whole path for continuation text)."""
+    path = list(span.section_path or [])
+    return path[:-1] if span.kind == "heading" else path
+
+
 def classify_span(span, seen_business: set) -> Decision:
     heading = norm_heading(span.heading_text)
     # Continuation text inherits a role-defining section heading from an earlier cell
@@ -217,6 +227,12 @@ def classify_span(span, seen_business: set) -> Decision:
 
     if section and QUIZ_HEADING_RE.match(section):
         return Decision("quiz", 0.75, f"Continues the quiz section '{span.section_title}'.")
+    # A heading nested under a section that is only a quiz container ("QUIZ", "Quiz 2", "MCQs"). A
+    # question written as a heading ("Quiz 1: Batch Normalization is ...") is not a container: authors
+    # sometimes give it a higher level than the lesson that follows.
+    container = next((p for p in ancestors(span) if QUIZ_CONTAINER_RE.match(norm_heading(p))), None)
+    if container is not None:
+        return Decision("quiz", 0.8, f"Inside the quiz section '{container}'.")
 
     # Agenda / outline
     if heading in AGENDA_HEADINGS or heading.startswith("agenda"):
@@ -225,6 +241,16 @@ def classify_span(span, seen_business: set) -> Decision:
     listy = body_lines and sum(bool(re.match(r"^\s*([-*+]|\d+[.)])\s", l)) for l in body_lines) / len(body_lines) >= 0.5
     if section and (section in AGENDA_HEADINGS or section.startswith("agenda")) and listy:
         return Decision("agenda", 0.85, f"List continuing the agenda section '{span.section_title}'.")
+    parent = norm_heading(ancestors(span)[-1]) if ancestors(span) else ""
+    # Lessons often sit under an "Agenda"/"Content" H1, so only a bare topic list counts: every line a
+    # short item (a topic name, not a sentence).
+    items = [re.sub(r"[*_`]", "", re.sub(r"^\s*([-*+]|\d+[.)]|[a-z][.)])\s*", "", l)).strip() for l in body_lines
+             if not THEMATIC_LINE_RE.fullmatch(l.strip() + "\n") and l.strip() != "---"]
+    item_lines = [l for l in body_lines if l.strip() != "---"]
+    all_items = bool(item_lines) and all(re.match(r"^\s*([-*+]|\d+[.)]|[a-z][.)])\s", l) for l in item_lines)
+    topic_list = all_items and bool(items) and all(0 < len(i) <= 40 and not i.endswith((".", ":", "?")) for i in items)
+    if span.kind == "heading" and (parent in AGENDA_HEADINGS or parent.startswith("agenda")) and topic_list:
+        return Decision("agenda", 0.85, f"Topic list under the agenda section '{ancestors(span)[-1]}'.")
     if ASSESSMENT_RE.search(span.content):
         return Decision("quiz", 0.9, "Links to assessment/practice problems.")
     lines = [l for l in body.split("\n") if l.strip()]
@@ -427,6 +453,18 @@ def statement_kind(stmt, source: str) -> str:
     seg = ast.get_source_segment(source, stmt) or ""
     if isinstance(stmt, (ast.Import, ast.ImportFrom)):
         return "import"
+    if isinstance(stmt, (ast.If, ast.With)):
+        # `if gpu: BATCH = 512 else: ...`, `if IS_COLAB: !gdown ...`, `with open(f) as h: x = pickle.load(h)`:
+        # plumbing when every statement inside is plumbing. The condition / context manager is ignored.
+        inner = stmt.body + (stmt.orelse if isinstance(stmt, ast.If) else [])
+        kinds = {statement_kind(st, source) for st in inner if not isinstance(st, ast.Pass)}
+        if not kinds or "other" in kinds:
+            return "other"
+        for k in ("loader", "config", "constant", "display", "import"):
+            if k in kinds:
+                return k
+    if isinstance(stmt, ast.Pass):
+        return "constant"
     if CONFIG_CALL_RE.match(seg):
         return "config"
     if isinstance(stmt, (ast.Assign, ast.AugAssign, ast.AnnAssign)):
@@ -466,12 +504,21 @@ def statement_kind(stmt, source: str) -> str:
     return "other"
 
 
+SHELL_DOWNLOAD_RE = re.compile(r"^\s*!\s*(gdown|wget|curl|unzip|tar|kaggle|git\s+clone)\b")
+SHELL_INSTALL_RE = re.compile(r"^\s*[!%]\s*(pip|apt|apt-get|conda)\b")
+
+
 def boilerplate_role(cell, lines: list[str], tree) -> Optional[Decision]:
     """A cell whose every statement is plumbing (imports, config, data loading, literal constants,
     display) is not a teaching tool."""
     if tree is None or not tree.body:
         return None
     kinds = [statement_kind(st, cell.content) for st in tree.body]
+    for line in lines:                                        # shell lines are blanked before parsing
+        if SHELL_DOWNLOAD_RE.match(line):
+            kinds.append("loader")
+        elif SHELL_INSTALL_RE.match(line):
+            kinds.append("config")
     if "other" in kinds:
         return None
     if "loader" in kinds:
