@@ -1,0 +1,872 @@
+[
+  {
+    "question_id": "Q01",
+    "question_type": "concept",
+    "question": "Explain precision and recall. Include an example if available.",
+    "expected_answer_points": [
+      "Precision measures fish among the catch; recall measures caught fish among all fish in the lake.",
+      "Keep the denominators distinct."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "14 - Classification metrics.ipynb",
+        "notebook_sha256": "8c7f0ea20972abb3dbd1fe01d99134bb969e446422039a9960a1ed91d9d705bb",
+        "cell_index": 5,
+        "cell_number": 6,
+        "cell_type": "markdown",
+        "section": "What can be a good metric?",
+        "source_excerpt": "## <b>Precision and Recall</b>\n\nClearly, Accuracy wasn't a good indicator of performance for imbalanced data\n\n#### What can be a good metric?\n\nLet's understand two metrics **Precision and Recall** with a very simple example\n\nImagine you are fishing on a boat with a wide net in a lake.\n- The lake has 100 fish and 100 turtles in it.\n\nSince fishes catch a higher price in the market, your aim is to catch the fishes as much as possible in a single throw and avoid harming the turtles.\n"
+      },
+      {
+        "notebook": "14 - Classification metrics.ipynb",
+        "notebook_sha256": "8c7f0ea20972abb3dbd1fe01d99134bb969e446422039a9960a1ed91d9d705bb",
+        "cell_index": 8,
+        "cell_number": 9,
+        "cell_type": "markdown",
+        "section": "Example",
+        "source_excerpt": "#### Let's start by understanding Precision first.\n\n#### What does Precision mean intuitively?\n-> Exactness\n\ni.e. you want to be precise with your fishing skill so that you get as much fishes as possible\n\nYou throw a net and you'll catch some fishes and turtle.\n\nNow, precision in terms of fishes will be **out of all the catch, how many are fishes**\n\n#### Example\n\nSay, you throw a normal fishing net in the water and you find 60 fish inside the net and 20 turtles too.\n\n- Hence, your Precision is $\\frac{60}{60+20}$\n- These turtles will lower your Precision.\n\n\n\n"
+      },
+      {
+        "notebook": "14 - Classification metrics.ipynb",
+        "notebook_sha256": "8c7f0ea20972abb3dbd1fe01d99134bb969e446422039a9960a1ed91d9d705bb",
+        "cell_index": 10,
+        "cell_number": 11,
+        "cell_type": "markdown",
+        "section": "How many did we catch?",
+        "source_excerpt": "#### What will be the recall?\n\nRecall can be thought of as **out of all the fishes in lake, how many did you catch**\n- it is in terms of fishes only\n\nCatch phrase: (**Recall that** they say, **Lots of fish in the sea, how many did you catch?**)**\n\n\n\n#### How many total fishes do we have ?\n-> 100\n\n#### How many did we catch?\n-> 60\n\nRecall would be : $\\frac{60}{100}$ i.e. 60%\n\ni.e. we caught 60% of the fishes present in lake.\n"
+      },
+      {
+        "notebook": "14 - Classification metrics.ipynb",
+        "notebook_sha256": "8c7f0ea20972abb3dbd1fe01d99134bb969e446422039a9960a1ed91d9d705bb",
+        "cell_index": 19,
+        "cell_number": 20,
+        "cell_type": "markdown",
+        "section": "What does precision tell intuitively?",
+        "source_excerpt": "**Precision is the ratio of true positive to the predicted positives** (sum of True positive and False Positive)\n\n#### What does precision tell intuitively?\nIntuitively, precision tell us **out of all points predicted to be positive, how many are actually postives**\n\nThink about it, it basically tells, **how precise our model is**(with the predictions). Hence, the term precision.\n\n\nNow, for our spam classification model,\n- if False postives are high (important mail being classifed as spam)\n- the denominator sum will go up\n- overall precision score will drop.\n\n"
+      }
+    ],
+    "expected_topics": [
+      "T12"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "revised_from_user_feedback",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Edit",
+      "notes": "The question should be simple enough, like, “explain precision and recall”? Example should be included if available."
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q03",
+    "question_type": "concept",
+    "question": "What is ensemble learning, and how does it differ from training one decision tree?",
+    "expected_answer_points": [
+      "Combine predictions from multiple base learners instead of relying on one model.",
+      "The notebook illustrates one tree versus 100 trees; do not claim every ensemble must contain 100 trees."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "17 - Bagging.ipynb",
+        "notebook_sha256": "b059c58d7b9f168ea0c9bdc3f7a500c169aa9f92e746d5a0a0d458ee321f8c97",
+        "cell_index": 3,
+        "cell_number": 4,
+        "cell_type": "markdown",
+        "section": "Question: Do you think we could somehow use multiple models for the same task?",
+        "source_excerpt": "Till now we have trained only one model for one task. But we have learnt many kinds of models.\n\n#### Question: Do you think we could somehow use multiple models for the same task?\n\nWhat if we can **train multiple base learners or models** which are as different as possible and **combine them smartly**?\n\n* For example: Instead of training one Decision tree we can train 100 decision trees and combine them\n* This is the **key principle of ensemble**\n\n\nThe word ensemble in english means multiple things, roughly it means **mixing** or **coming together**.\n\n * We can also train various machine learning models like Decision Tree, Logistic Regression, KNN and can combine them smartly.\n"
+      },
+      {
+        "notebook": "17 - Bagging.ipynb",
+        "notebook_sha256": "b059c58d7b9f168ea0c9bdc3f7a500c169aa9f92e746d5a0a0d458ee321f8c97",
+        "cell_index": 5,
+        "cell_number": 6,
+        "cell_type": "markdown",
+        "section": "What are the types of ensembles ?",
+        "source_excerpt": "### What are the types of ensembles ?\n\nThere are four main types of ensemble\n1. Bagging\n * Example : Random Forest\n2. Boosting\n * Example : GBDT\n3. Stacking\n4. Cascading\n\nAlso, a mix of each of these can be possible"
+      }
+    ],
+    "expected_topics": [
+      "T15",
+      "T16",
+      "T17"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "accepted_by_user",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Accept",
+      "notes": "Good "
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q04",
+    "question_type": "concept",
+    "question": "How do I handle missing values in a dataset?",
+    "expected_answer_points": [
+      "Remove incomplete rows/columns using dropna, or fill values using fillna.",
+      "Mean/median are examples, not a guarantee that imputation is appropriate in every setting."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "06 - Amazon sales data analysis 2.ipynb",
+        "notebook_sha256": "5574982655c347109d0fa2ce2babfa2e80ea1bbe3bc75de5ffb1d11300f4128d",
+        "cell_index": 11,
+        "cell_number": 12,
+        "cell_type": "markdown",
+        "section": "2 Handling Missing Values with `.dropna()` and `.fillna()`",
+        "source_excerpt": "### **2 Handling Missing Values with `.dropna()` and `.fillna()`**\n\nThere are two main strategies to handle missing data:\n1. **Remove Missing Values**: Use <font color=\"skyblue\">`.dropna()`</font> to remove rows or columns with missing values.\n2. **Impute Missing Values**: Use <font color=\"greed\">`.fillna()`</font> to replace missing values with a specific value, such as the mean or median.\n\n**1: Removing Missing Values**\n- Drop rows where any value is missing.\n\n**2: Imputing Missing Values**\n- Fill missing `rating` values with the column mean.\n"
+      },
+      {
+        "notebook": "06 - Amazon sales data analysis 2.ipynb",
+        "notebook_sha256": "5574982655c347109d0fa2ce2babfa2e80ea1bbe3bc75de5ffb1d11300f4128d",
+        "cell_index": 14,
+        "cell_number": 15,
+        "cell_type": "code",
+        "section": "Business Context:",
+        "source_excerpt": "# Example : Fill missing ratings with the column mean\nmean_rating = df['rating'].mean()\ndf['rating_filled'] = df['rating'].fillna(mean_rating)\n\nprint(f\"Filling missing values in rating column with {mean_rating}\")\ndf[[\"rating\", 'rating_filled']].isna().sum()"
+      }
+    ],
+    "expected_topics": [
+      "T03",
+      "T07"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "revised_from_user_feedback",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Edit",
+      "notes": "How to handle missing values in dataset"
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q05",
+    "question_type": "concept",
+    "question": "What are the limitations of PCA?",
+    "expected_answer_points": [
+      "Principal components can be difficult to interpret.",
+      "Linear relationships, feature scales, and outliers affect suitability; do not claim PCA solves every dimensionality problem."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "24 - PCA and TSNE.ipynb",
+        "notebook_sha256": "aebdb0e055833d82ef5ad54e07b603e4c735d2008f74b56807fd2ed565628511",
+        "cell_index": 62,
+        "cell_number": 63,
+        "cell_type": "markdown",
+        "section": "PCA limitations",
+        "source_excerpt": "### PCA limitations\n\n\n1. **Low interpretability of principal components** Principal components are linear combinations of the features from the original data, but they are not as easy to interpret. For example, it is difficult to tell which are the most important features in the dataset after computing principal components.\n2. **PCA assumes a linear relationship between features** The algorithm is not well suited to capturing non-linear relationships.\n3. **PCA is sensitive to the scale of the features** Imagine we have two features - one takes values between 0 and 1000, while the other takes values between 0 and 1. PCA will be extremely biased towards the first feature being the first principle component, regardless of the actual maximum variance within the data. This is why it’s so important to standardize the values first.\n4. **PCA is not robust against outliers** Similar to the point above, the algorithm will be biased in datasets with strong outliers."
+      }
+    ],
+    "expected_topics": [
+      "T21"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "accepted_by_user",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Accept",
+      "notes": "Good"
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q07",
+    "question_type": "math",
+    "question": "Explain the silhouette score with an example.",
+    "expected_answer_points": [
+      "s=(p-q)/max(p,q).",
+      "p is the mean distance to points in the nearest other cluster; q is the mean intra-cluster distance.",
+      "The notes give a range of -1 to 1; near 1 indicates similarity to one's own cluster, near -1 indicates poor assignment.",
+      "Retrieve and verify a source-backed worked example. If unavailable, state this explicitly; do not invent example values."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "20 - Intro to clustering and K-means.ipynb",
+        "notebook_sha256": "152604df52820607005913c4c1207cd60006d3efc7a20dacda3f684dce3497b2",
+        "cell_index": 66,
+        "cell_number": 67,
+        "cell_type": "markdown",
+        "section": "Silhouette Analysis -",
+        "source_excerpt": "### Silhouette Analysis -\n\n$$\\text{silhouette score}=\\frac{p-q}{max(p,q)}$$\n\n$p$ is the mean distance to the points in the nearest cluster that the data point is not a part of\n\n$q$ is the mean intra-cluster distance to all the points in its own cluster.\n\n* The value of the silhouette score range lies between -1 to 1.\n\n* A score closer to 1 indicates that the data point is very similar to other data points in the cluster,\n\n* A score closer to -1 indicates that the data point is not similar to the data points in its cluster."
+      }
+    ],
+    "expected_topics": [
+      "T19"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": true,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "revised_from_user_feedback",
+    "evidence_status": "formula_verified_example_search_pending",
+    "eligible_for_full_corpus_scoring": false,
+    "user_review": {
+      "decision": "Edit",
+      "notes": "Question: Explain the silhouette score with an example"
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q08",
+    "question_type": "math",
+    "question": "Explain moving average with an example.",
+    "expected_answer_points": [
+      "y_hat_t=(y_(t-1)+...+y_(t-m))/m=(1/m) sum from j=t-m to t-1 of y_j.",
+      "y is observed value; y_hat is forecast; m is observation count; t identifies the forecast time.",
+      "Average the preceding m observations, excluding y_t; no invented worked dataset.",
+      "Retrieve and verify a source-backed worked example. If unavailable, state this explicitly; do not invent example values."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "25 - Timeseries 1.ipynb",
+        "notebook_sha256": "ff03b628b25d277e2d7354aa8d88477336011c09923017ce6c458dfec9e56cde",
+        "cell_index": 85,
+        "cell_number": 86,
+        "cell_type": "markdown",
+        "section": "Math of  Moving Averages",
+        "source_excerpt": "### Math of  Moving Averages\n\n> **Q. How do we formualate the Moving averages mathematically?**\n\nBefore we dive into math, let's fix some notations that we will use throughout time series. Let <br>\n$y$ -> Current/Actual value <br>\n$ŷ$ -> Forecasted value <br>\n$m$ -> Number of observations\n\nLet's formulate the Moving Averages concept.\n\n$ŷ_{t} = \\frac{y_{t-1} + y_{t-2} + y_{t-3} + ...y_{t-m} }{m}$\n\nThis can also be written as,\n$ŷ_{t} = \\frac{1}{m}∑_{j=t-m}^{t-1}y_{j}$\n\n"
+      }
+    ],
+    "expected_topics": [
+      "T22",
+      "T23"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": true,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "revised_from_user_feedback",
+    "evidence_status": "formula_verified_example_search_pending",
+    "eligible_for_full_corpus_scoring": false,
+    "user_review": {
+      "decision": "Edit",
+      "notes": "Question: Explain moving average with example"
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q09",
+    "question_type": "math",
+    "question": "Explain Bayes’ theorem with an example.",
+    "expected_answer_points": [
+      "Explain updating a probability using new evidence and define posterior, likelihood, prior and evidence.",
+      "Include the formula and a worked example only after their notebook evidence is extracted and verified.",
+      "The current verified cell gives a cricket event setup, not a verified numerical worked example; do not manufacture numbers."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "08 - Analyzing Sachin Tendulkars ODI Career.ipynb",
+        "notebook_sha256": "38d07b36b4058987a25cee3a49ea5584bb1357992484169d680e18cb685b749c",
+        "cell_index": 32,
+        "cell_number": 33,
+        "cell_type": "markdown",
+        "section": "Intuition Behind Bayes' Theorem",
+        "source_excerpt": "# Bayes' Theorem\n\nBayes' Theorem is a cornerstone of probability theory that helps us revise probabilities based on new evidence. It enables us to calculate conditional probabilities when the reverse probability and other relevant information are known.\n\n## <span style=color:skyblue>Formula for Bayes' Theorem</span>\nThe formula for Bayes' Theorem is:\n<img src=\"https://d2beiqkhq929f0.cloudfront.net/public_assets/assets/000/167/013/original/Screenshot_2025-11-21_164529.png?1763723744\" width=\"300\" />\n\nWhere:\n\n* P(A∣B): Probability of A occurring given that B has occurred (posterior).\n* P(B∣A): Probability of B occurring given that A has occurred (likelihood).\n* P(A): Probability of A occurring (prior).\n* P(B): Probability of B occurring (evidence).\n\n## <span style=color:skyblue>Intuition Behind Bayes' Theorem</span>\n**Example:**\nIn Sachin’s dataset:\n* Event A: Sachin scores a century.\n* Event B: Sachin batted first.\n\nWe want to compute P(A∣B):\n\nWhat is the probability that Sachin scores a century, given he batted first?\n"
+      }
+    ],
+    "expected_topics": [
+      "T05"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": true,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "revised_from_user_feedback",
+    "evidence_status": "formula_and_example_verification_pending",
+    "eligible_for_full_corpus_scoring": false,
+    "user_review": {
+      "decision": "Reject",
+      "notes": "Include bayes theorem question instead "
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q10",
+    "question_type": "code",
+    "question": "How do I fill missing values for a column in pandas?",
+    "expected_answer_points": [
+      "Explain fillna with a constant or a suitable statistic. Use the verified rating/mean or category/Unknown examples as concrete illustrations.",
+      "The source writes new rating_filled/category_filled columns; distinguish this from overwriting the original column.",
+      "Explain existing DataFrame/column dependencies. Do not imply a mean is suitable for every data type."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "06 - Amazon sales data analysis 2.ipynb",
+        "notebook_sha256": "5574982655c347109d0fa2ce2babfa2e80ea1bbe3bc75de5ffb1d11300f4128d",
+        "cell_index": 14,
+        "cell_number": 15,
+        "cell_type": "code",
+        "section": "Business Context:",
+        "source_excerpt": "# Example : Fill missing ratings with the column mean\nmean_rating = df['rating'].mean()\ndf['rating_filled'] = df['rating'].fillna(mean_rating)\n\nprint(f\"Filling missing values in rating column with {mean_rating}\")\ndf[[\"rating\", 'rating_filled']].isna().sum()"
+      }
+    ],
+    "expected_topics": [
+      "T03",
+      "T02"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": false,
+    "requires_code": true,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "revised_from_user_feedback",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Edit",
+      "notes": "How to fill missing values for any column in pandas"
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q12",
+    "question_type": "comparison",
+    "question": "How do bagging and boosting differ in how their base learners are trained?",
+    "expected_answer_points": [
+      "Bagging trains learners independently and combines predictions.",
+      "Boosting builds learners sequentially; the cited quiz describes later models addressing previous errors.",
+      "Cite both notebooks; do not generalize the notebook's simplified residual example to every loss."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "17 - Bagging.ipynb",
+        "notebook_sha256": "b059c58d7b9f168ea0c9bdc3f7a500c169aa9f92e746d5a0a0d458ee321f8c97",
+        "cell_index": 12,
+        "cell_number": 13,
+        "cell_type": "markdown",
+        "section": "What is Bagging?",
+        "source_excerpt": "This is what **bagging** does.\n\nInstead of training one model on data, we training multiple models on data.\n\nIn short,\n\n**Bagging refers to training different models for the same task, independently of each other and then cleverly combining their predictions.**\n"
+      },
+      {
+        "notebook": "17 - Bagging.ipynb",
+        "notebook_sha256": "b059c58d7b9f168ea0c9bdc3f7a500c169aa9f92e746d5a0a0d458ee321f8c97",
+        "cell_index": 18,
+        "cell_number": 19,
+        "cell_type": "markdown",
+        "section": "Intuition",
+        "source_excerpt": "\n### Intuition\n\nBagging stand for Bootstrapped Aggregation.\n\nWe'll come to Bootstrapping later.\n\nBut, let's see the the intuition first\n\n\n- We basically **train $k$ different models**($M_1,M_2,....M_k$) and these models are called **Base Learners**.\n\n* This is followed by **Aggregation**\n    * We use majority vote for Classification\n    * We use Mean/Median for Regression\n\nHence we see that just like DT, RF also works for both classification and regression\n\n**DO NOTE that we want all the base learners to be as different as possible.**\n"
+      },
+      {
+        "notebook": "18 - Boosting.ipynb",
+        "notebook_sha256": "672c140c7ff6c6b1011545fd5ee9a9d48505ee6797752c487130454c1c6ea478",
+        "cell_index": 24,
+        "cell_number": 25,
+        "cell_type": "markdown",
+        "section": "What is boosting doing intuitively?",
+        "source_excerpt": "```\nQuiz - Check your understanding\n\nWhich of the following statement is true?\n\na. Boosting is a sequential model building technique\nb. We use weights to adjust the influence of model in final predicition\nc. New model is build on the error of previous models\nd. All of the above\n\n\nCorrect option: All of the above.\n\n```"
+      }
+    ],
+    "expected_topics": [
+      "T16",
+      "T17"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": true,
+    "should_refuse": false,
+    "review_status": "accepted_by_user",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Accept",
+      "notes": "Good"
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q13",
+    "question_type": "comparison",
+    "question": "Compare naive and seasonal naive forecasting. Which past observation supplies each forecast?",
+    "expected_answer_points": [
+      "Naive repeats the latest observed value.",
+      "Seasonal naive uses the last observation from the same season, such as the same month in the previous year.",
+      "Do not assert either model always wins or quote a benchmark absent from the evidence."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "26 - Timeseries 2.ipynb",
+        "notebook_sha256": "93840e5d865b4f8fb7eb582ada0fdab098a5febb7590dfd2e853af778f108559",
+        "cell_index": 29,
+        "cell_number": 30,
+        "cell_type": "markdown",
+        "section": "2. Naive Approach",
+        "source_excerpt": "\n> **Q.What if we take the current value, and forecast that?**\n\nLet's simply take the value of series at time $t=k-1$ (i.e. $x_{k-1}$), and forecast that for all future.\n\nThis is called the **Naive** approach of forecasting.\n\n  <center><img src=\"https://drive.google.com/uc?id=1yhuUok4-WMOQzJ244inmkjSh1shkmrL8\" width=\"600\" height=\"400\"> </center>\n\n\n> **Q. What if we get a different value for series at t=k, would this not change all the future forecasts we had made earlier?**\n\nYes, as per this rule, it would.\n\nThis raises a conflict.\n\nFor example,\n- Based on data available till March, you forecast that June sales would be $X_{March}$\n- But after the month of April, you tell the client that, now the June sales should be $X_{April}$\n- Not to mention, your forecast for April came out to be incorrect as well.\n- You can easily loose the client's trust based on this approach\n\nHence, this is not a very intelligent approach.\n\n"
+      },
+      {
+        "notebook": "26 - Timeseries 2.ipynb",
+        "notebook_sha256": "93840e5d865b4f8fb7eb582ada0fdab098a5febb7590dfd2e853af778f108559",
+        "cell_index": 35,
+        "cell_number": 36,
+        "cell_type": "markdown",
+        "section": "3. Seasonal Naive Forecast",
+        "source_excerpt": "We can perhaps take a smarter approach to optimise the Naive method.\n\n> **Q. What if we consider the seasonality patterns?**\n\nWe can set each forecast to be equal to the last observed value from the same season (e.g., the same month of the previous year).\n\nThis way, we're essentially forecasting the future values to be exactly same as last season.\n\nThis is called **Seasonal Naive Forecast**.\n\n  <center><img src=\"https://drive.google.com/uc?id=1JLP65ufaO_uFfUxctbVi7wh8V7qxBwcO\" width=\"700\" height=\"500\"> </center>\n"
+      }
+    ],
+    "expected_topics": [
+      "T23"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "revised_from_user_feedback",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Edit",
+      "notes": "Dont mention using the notes anywhere in question"
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q14",
+    "question_type": "recommendation",
+    "question": "I am revising ensemble learning. Recommend two related study topics and explain the relationship.",
+    "expected_answer_points": [
+      "Recommend bagging/random forests and boosting.",
+      "Explain that the notebook explicitly lists bagging and boosting as ensemble types; name T16 and T17.",
+      "This tests family relationships, not a claim about a proven optimal study order."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "17 - Bagging.ipynb",
+        "notebook_sha256": "b059c58d7b9f168ea0c9bdc3f7a500c169aa9f92e746d5a0a0d458ee321f8c97",
+        "cell_index": 3,
+        "cell_number": 4,
+        "cell_type": "markdown",
+        "section": "Question: Do you think we could somehow use multiple models for the same task?",
+        "source_excerpt": "Till now we have trained only one model for one task. But we have learnt many kinds of models.\n\n#### Question: Do you think we could somehow use multiple models for the same task?\n\nWhat if we can **train multiple base learners or models** which are as different as possible and **combine them smartly**?\n\n* For example: Instead of training one Decision tree we can train 100 decision trees and combine them\n* This is the **key principle of ensemble**\n\n\nThe word ensemble in english means multiple things, roughly it means **mixing** or **coming together**.\n\n * We can also train various machine learning models like Decision Tree, Logistic Regression, KNN and can combine them smartly.\n"
+      },
+      {
+        "notebook": "17 - Bagging.ipynb",
+        "notebook_sha256": "b059c58d7b9f168ea0c9bdc3f7a500c169aa9f92e746d5a0a0d458ee321f8c97",
+        "cell_index": 5,
+        "cell_number": 6,
+        "cell_type": "markdown",
+        "section": "What are the types of ensembles ?",
+        "source_excerpt": "### What are the types of ensembles ?\n\nThere are four main types of ensemble\n1. Bagging\n * Example : Random Forest\n2. Boosting\n * Example : GBDT\n3. Stacking\n4. Cascading\n\nAlso, a mix of each of these can be possible"
+      },
+      {
+        "notebook": "17 - Bagging.ipynb",
+        "notebook_sha256": "b059c58d7b9f168ea0c9bdc3f7a500c169aa9f92e746d5a0a0d458ee321f8c97",
+        "cell_index": 12,
+        "cell_number": 13,
+        "cell_type": "markdown",
+        "section": "What is Bagging?",
+        "source_excerpt": "This is what **bagging** does.\n\nInstead of training one model on data, we training multiple models on data.\n\nIn short,\n\n**Bagging refers to training different models for the same task, independently of each other and then cleverly combining their predictions.**\n"
+      },
+      {
+        "notebook": "18 - Boosting.ipynb",
+        "notebook_sha256": "672c140c7ff6c6b1011545fd5ee9a9d48505ee6797752c487130454c1c6ea478",
+        "cell_index": 24,
+        "cell_number": 25,
+        "cell_type": "markdown",
+        "section": "What is boosting doing intuitively?",
+        "source_excerpt": "```\nQuiz - Check your understanding\n\nWhich of the following statement is true?\n\na. Boosting is a sequential model building technique\nb. We use weights to adjust the influence of model in final predicition\nc. New model is build on the error of previous models\nd. All of the above\n\n\nCorrect option: All of the above.\n\n```"
+      }
+    ],
+    "expected_topics": [
+      "T16",
+      "T17"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": true,
+    "should_refuse": false,
+    "review_status": "accepted_by_user",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Accept",
+      "notes": "Genuine relationship must exist"
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q15",
+    "question_type": "recommendation",
+    "question": "I am revising Word2Vec. Recommend two related concepts and explain their relationship to Word2Vec.",
+    "expected_answer_points": [
+      "Recommend CBOW and Skip-gram as two architectures of Word2Vec.",
+      "Explain CBOW predicts the current word from context and Skip-gram predicts context from the current word.",
+      "Both map to T37. Do not invent prerequisite relationships."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "46 - Word Embedding.ipynb",
+        "notebook_sha256": "4043e7247be542bf76143f784b8924953da91010fc74d77ecb2052cb5e8ccbff",
+        "cell_index": 28,
+        "cell_number": 29,
+        "cell_type": "markdown",
+        "section": "How does Word2Vec learn word embeddings?",
+        "source_excerpt": "## How does Word2Vec learn word embeddings?\n- Word2vec utilizes either of the two model architectures to produce a distributed representation of words:\n - **Continuous Bag-of-Words (CBoW)**\n - **Skip-gram**"
+      },
+      {
+        "notebook": "46 - Word Embedding.ipynb",
+        "notebook_sha256": "4043e7247be542bf76143f784b8924953da91010fc74d77ecb2052cb5e8ccbff",
+        "cell_index": 30,
+        "cell_number": 31,
+        "cell_type": "markdown",
+        "section": "How does Word2Vec learn word embeddings?",
+        "source_excerpt": "- In the **Continuous Bag-of-Words (CBoW)** architecture, the model **predicts the current word** from a window of **surrounding context** words.\n- In the **Skip-gram** architecture, the model **uses current word to predict** the surrounding window of **context words**."
+      }
+    ],
+    "expected_topics": [
+      "T37"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "accepted_by_user",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Accept",
+      "notes": ""
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q16",
+    "question_type": "partial",
+    "question": "Explain precision, then tell me the exact precision of my deployed churn model. I have not supplied its predictions, labels or evaluation results.",
+    "expected_answer_points": [
+      "Explain precision as TP/(TP+FP) using the notes.",
+      "Explicitly say the deployed model's precision cannot be determined from the supplied notebooks; do not reuse the fishing example as its score."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "14 - Classification metrics.ipynb",
+        "notebook_sha256": "8c7f0ea20972abb3dbd1fe01d99134bb969e446422039a9960a1ed91d9d705bb",
+        "cell_index": 19,
+        "cell_number": 20,
+        "cell_type": "markdown",
+        "section": "What does precision tell intuitively?",
+        "source_excerpt": "**Precision is the ratio of true positive to the predicted positives** (sum of True positive and False Positive)\n\n#### What does precision tell intuitively?\nIntuitively, precision tell us **out of all points predicted to be positive, how many are actually postives**\n\nThink about it, it basically tells, **how precise our model is**(with the predictions). Hence, the term precision.\n\n\nNow, for our spam classification model,\n- if False postives are high (important mail being classifed as spam)\n- the denominator sum will go up\n- overall precision score will drop.\n\n"
+      }
+    ],
+    "expected_topics": [
+      "T12"
+    ],
+    "expected_behavior": "partial",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "accepted_by_user",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Accept",
+      "notes": ""
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q17",
+    "question_type": "partial",
+    "question": "Show a five-cluster K-means example, then report its exact runtime on my Mac. I have supplied no timing results or machine specifications.",
+    "expected_answer_points": [
+      "Provide the sourced K-means snippet and its parameters.",
+      "State that runtime on the user's Mac is unavailable; do not fabricate a benchmark or execute the notebook automatically."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "20 - Intro to clustering and K-means.ipynb",
+        "notebook_sha256": "152604df52820607005913c4c1207cd60006d3efc7a20dacda3f684dce3497b2",
+        "cell_index": 65,
+        "cell_number": 66,
+        "cell_type": "code",
+        "section": "K-Means with some random 'K'",
+        "source_excerpt": "# Kmeans with K=5\nmodel_clus5 = KMeans(n_clusters = 5, max_iter=50)\nmodel_clus5.fit(RFM_norm1)"
+      }
+    ],
+    "expected_topics": [
+      "T19"
+    ],
+    "expected_behavior": "partial",
+    "requires_math": false,
+    "requires_code": true,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "accepted_by_user",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Accept",
+      "notes": ""
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q18",
+    "question_type": "unanswerable",
+    "question": "Explain how HNSW builds its graph and how efSearch changes query behavior.",
+    "expected_answer_points": [
+      "I don’t know from the available notebooks.",
+      "Do not substitute an answer about Annoy or general nearest-neighbor search."
+    ],
+    "expected_sources": [],
+    "expected_topics": [
+      "T32"
+    ],
+    "expected_behavior": "refuse",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": true,
+    "review_status": "accepted_by_user",
+    "evidence_status": "text_absence_candidate_image_review_pending",
+    "eligible_for_full_corpus_scoring": false,
+    "user_review": {
+      "decision": "Accept",
+      "notes": ""
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q19",
+    "question_type": "unanswerable",
+    "question": "Derive the finite-sample coverage guarantee for split conformal prediction.",
+    "expected_answer_points": [
+      "I don’t know from the available notebooks.",
+      "Do not substitute a generic forecasting prediction interval or invent a proof."
+    ],
+    "expected_sources": [],
+    "expected_topics": [],
+    "expected_behavior": "refuse",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": true,
+    "review_status": "accepted_by_user",
+    "evidence_status": "text_absence_candidate_image_review_pending",
+    "eligible_for_full_corpus_scoring": false,
+    "user_review": {
+      "decision": "Accept",
+      "notes": ""
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q20",
+    "question_type": "unanswerable",
+    "question": "What exact chunk size and overlap achieved the best retrieval score in experiments on this 53-notebook revision-agent corpus?",
+    "expected_answer_points": [
+      "I don’t know from the available notebooks.",
+      "Do not turn generic chunk-size advice into a measured result for this project."
+    ],
+    "expected_sources": [],
+    "expected_topics": [],
+    "expected_behavior": "refuse",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": true,
+    "review_status": "accepted_by_user",
+    "evidence_status": "text_absence_candidate_image_review_pending",
+    "eligible_for_full_corpus_scoring": false,
+    "user_review": {
+      "decision": "Accept",
+      "notes": ""
+    },
+    "lifecycle_status": "active"
+  },
+  {
+    "question_id": "Q21",
+    "question_type": "concept",
+    "question": "Why is data leakage a problem in model evaluation?",
+    "expected_answer_points": [
+      "Using test data to choose hyperparameters lets information from that test set influence model selection; the evaluation data is no longer unseen to the selection process.",
+      "Consequently the resulting score is not an independent assessment of generalization and can be optimistic. This is a synthesis of the cited leakage warning, not a measured inflation amount.",
+      "Use validation or cross-validation within training data for tuning, then test once on the held-out test set."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "12 - Sklearn Pipelines.ipynb",
+        "notebook_sha256": "141fe40c57c0c5b0c2ab341d207daef748ef75b284048ea00eff3b48626e00f7",
+        "cell_index": 98,
+        "cell_number": 99,
+        "cell_type": "markdown",
+        "section": "Question: Is there a problem with this approach ?",
+        "source_excerpt": "#### Question: Is there a problem with this approach ?\n\nAns: The problem is we are relying on the test data to find the best hyperparam.\n- i.e. we are using test data for training which shouldn't be done.\n- Test data should only be used to check the performance of model on unseen data.\n\n\n**Using the test data for hyperparam tuning is not good step. Never do it**"
+      },
+      {
+        "notebook": "12 - Sklearn Pipelines.ipynb",
+        "notebook_sha256": "141fe40c57c0c5b0c2ab341d207daef748ef75b284048ea00eff3b48626e00f7",
+        "cell_index": 180,
+        "cell_number": 181,
+        "cell_type": "markdown",
+        "section": "2. Problems in the Current Approach",
+        "source_excerpt": "#### 2. Problems in the Current Approach\n\nIn train-test split, we have three options:\n1. **Simply split into train and test**: But that way tuning a hyperparameter makes the model 'see' the test data (i.e. knowledge of test data leaks into the model)\n2. **Split into train, validation, test sets**: Then the validation data would eat into the training set\n3. **Cross-validation**: Split into train and test, and train multiple models by sampling the train set. Finally, just test once on the test set.\n"
+      }
+    ],
+    "expected_topics": [
+      "T08"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "question_accepted_by_user",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Accept",
+      "notes": "Question wording accepted in conversation. Expected answer points remain proposed until source verification."
+    },
+    "lifecycle_status": "active",
+    "expected_answer": "Data leakage makes evaluation unreliable because information from the evaluation set influences model training or selection. For example, notebook 12 warns against choosing hyperparameters using the test set (cell 98). Once the test results guide the choice, that set no longer provides an independent check on unseen data; its score can look better than performance on genuinely new data. Cell 180 proposes tuning with validation/cross-validation and testing once on the test set.",
+    "evidence_notes": "Coverage is specifically test-set leakage during hyperparameter selection. Other leakage mechanisms are not required by this evidence. Optimism is an explanatory inference from the stated loss of unseen-test independence; no numerical improvement is asserted.",
+    "answer_key_review_status": "source_verified_pending_user_review"
+  },
+  {
+    "question_id": "Q22",
+    "question_type": "math",
+    "question": "Explain how gradient descent updates model weights, with an example.",
+    "expected_answer_points": [
+      "State W_new = W_old - learning_rate * dL/dW, evaluated at the current weights. W is the weight, L the loss, dL/dW the gradient and learning_rate the step multiplier.",
+      "The update goes opposite to the gradient: with a positive learning rate, a negative gradient increases the weight and a positive gradient decreases it. Do not promise that every finite update reduces loss.",
+      "Reproduce the notebook single-example calculation: X[0]=1, predicted Cat probability 0.24, Cat target 1; dZ=0.24-1=-0.76; dW[0,0]=1*(-0.76)=-0.76; W_old=0.1 and learning_rate=0.1 give W_new=0.176."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "31 - Neural network 2.ipynb",
+        "notebook_sha256": "2b5f9001cb0728b85b922af9f0a3e0ae0991fc2a58c385e1bc4b046bf1aeab87",
+        "cell_index": 11,
+        "cell_number": 12,
+        "cell_type": "markdown",
+        "section": "🚀 **In One Sentence",
+        "source_excerpt": "## 🎯 **Let's Connect the Math to the Code - Simple Explanation**\n\nYou're right! You know the theory. Let me show you **EXACTLY** how the code connects to what you already know.\n\n---\n\n### 📚 **What You Already Know (The Theory)**\n\n1. We need: **∂Loss/∂W** (how loss changes with weights)\n2. Then update: **W_new = W_old - lr × (∂Loss/∂W)**\n\n**But the problem is:** Loss doesn't directly connect to W. It goes through steps:\n```\nW → Z → A (softmax) → Loss\n```\n\nSo we use **chain rule** to work backwards!\n\n---\n\n## 🔗 **The Chain Rule Path**\n\nTo get **∂Loss/∂W**, we need:\n```\n∂Loss/∂W = ∂Loss/∂Z × ∂Z/∂W\n```\n\nLet's find each part:\n\n---\n\n## 📊 **Part 1: Why We Subtract 1 (Finding ∂Loss/∂Z)**\n\n### **The Math Behind It**\n\nFor cross-entropy loss with softmax, the derivative is surprisingly simple:\n\n```\n∂Loss/∂Z = A - Y_true\n```\n\nWhere:\n- **A** = our predictions (probabilities)\n- **Y_true** = one-hot encoded truth\n\n### **Example with Numbers:**\n\n**Sample 1 (actual = Cat):**\n- Predictions A = [0.24, 0.32, 0.44]\n- Truth one-hot = [1, 0, 0] (it's a cat)\n- **∂Loss/∂Z = [0.24-1, 0.32-0, 0.44-0] = [-0.76, 0.32, 0.44]**\n\n**This is exactly what the code does!**\n```python\nself.dZ = self.A.copy()           # Start with predictions\nself.dZ[range(m), y_true] -= 1    # Subtract 1 from true class position\n```\n\n### **Why This Makes Sense:**\n- **-0.76 for Cat**: Negative = \"Increase this!\" (we only gave 24% but it should be 100%)\n- **+0.32 for Dog**: Positive = \"Decrease this!\" (we gave 32% but it should be 0%)\n- **+0.44 for Bird**: Positive = \"Decrease this!\" (we gave 44% but it should be 0%)\n\n---\n\n## 🧮 **Part 2: Finding ∂Z/∂W**\n\nRemember: **Z = X × W + b**\n\nSo: **∂Z/∂W = X** (the derivative of XW with respect to W is just X!)\n\n---\n\n## 🔄 **Part 3: Combining Everything (Finding dW)**\n\nUsing chain rule:\n```\n∂Loss/∂W = ∂Loss/∂Z × ∂Z/∂W\n         = dZ × X\n         = X^T × dZ  (we transpose for matrix multiplication)\n```\n\n**This is exactly:**\n```python\nself.dW = np.dot(X.T, self.dZ)\n```\n\n---\n\n## 📝 **Simple Step-by-Step Example**\n\nLet's trace one weight update:\n\n### **Starting Point:**\n- Image features: X = [1, 2]\n- Current weight: W[0,0] = 0.1 (connects input 1 to Cat output)\n- Network predicted: 24% Cat\n- Truth: 100% Cat (it IS a cat!)\n\n### **Step 1: Calculate Error Signal**\n```\ndZ for Cat = 0.24 - 1.0 = -0.76\n```\n\"You were 76% too low on Cat!\"\n\n### **Step 2: Calculate Weight Gradient**\n```\ndW[0,0] = X[0] × dZ[Cat]\n        = 1 × (-0.76)\n        = -0.76\n```\n\"This weight contributed -0.76 to the error\"\n\n### **Step 3: Update Weight**\n```\nW[0,0]_new = W[0,0]_old - lr × dW[0,0]\n           = 0.1 - 0.1 × (-0.76)\n           = 0.1 + 0.076\n           = 0.176\n```\n\"Increase this weight to make Cat score higher next time!\"\n\n---\n\n## 💡 **The Complete Picture in Simple Terms**\n\n```python\n# What we're really doing:\n\n# 1. FORWARD: Make a guess\nprediction = [0.24, 0.32, 0.44]  # \"I think: 24% cat, 32% dog, 44% bird\"\n\n# 2. ERROR: How wrong were we?\ntruth = [1, 0, 0]  # \"It's 100% cat!\"\nerror = prediction - truth  # [-0.76, 0.32, 0.44]\n# Means: \"Add 76% to cat, remove 32% from dog, remove 44% from bird\"\n\n# 3. BLAME: Which weights caused this error?\n# If input was [1, 2] and error was [-0.76, 0.32, 0.44]\n# Then weight from input1→cat contributed: 1 × (-0.76) = -0.76\n\n# 4. FIX: Adjust weights opposite to gradient\n# If gradient is negative (-0.76), we ADD to weight\n# If gradient is positive (+0.44), we SUBTRACT from weight\n```\n\n---\n\n## 🎯 **Why This Specific Formula Works**\n\nThe magical formula `dZ = predictions - truth` comes from calculus, but here's the intuition:\n\n**If you predicted 30% but truth is 100%:**\n- Error = 30% - 100% = -70%\n- Negative means \"go UP\"\n- Update will increase this weight\n\n**If you predicted 80% but truth is 0%:**\n- Error = 80% - 0% = +80%\n- Positive means \"go DOWN\"\n- Update will decrease this weight\n\n---\n\n## 📊 **Visual Summary**\n\n```\nFORWARD PASS:\nX --W--> Z --softmax--> A --loss--> L\n\nBACKWARD PASS (derivatives):\nL --∂L/∂A--> A --∂A/∂Z--> Z --∂Z/∂W--> W\n\nACTUAL CALCULATION:\n1. dZ = A - Y_true        (error at output)\n2. dW = X^T × dZ          (error for each weight)\n3. W_new = W - lr × dW    (fix the weights)\n```\n\n---\n\n## 🚀 **In One Sentence**\n\n**We subtract 1 from the true class because that's the derivative of cross-entropy loss with softmax - it tells us \"how wrong we were\" for each class, which we then use to figure out \"which weights to blame\" and \"how to fix them\"!**\n\nIt's like:\n- **Teacher marks your test**: \"You got 24/100 on question 1\" (dZ)\n- **You figure out why**: \"I didn't study chapter 3\" (dW)\n- **You fix it**: \"Study chapter 3 more\" (update W)\n\nDoes this make the connection clearer? The code is just implementing the calculus chain rule in a clever, simplified way! 🎓"
+      },
+      {
+        "notebook": "31 - Neural network 2.ipynb",
+        "notebook_sha256": "2b5f9001cb0728b85b922af9f0a3e0ae0991fc2a58c385e1bc4b046bf1aeab87",
+        "cell_index": 25,
+        "cell_number": 26,
+        "cell_type": "markdown",
+        "section": "Why does small gradient hampers GD process ?",
+        "source_excerpt": "The equation to update the weight $w$ is: $w_{new} = w_{{old}} - 𝝶.\\frac{∂ \\ loss}{∂ \\ w} \\biggr\\vert_{{W}_{old}}$\n\n- We just saw that this partial derivative value becomes miniscule, as the number of layers increase.\n- As a result, the NN gets trained very very slowly.\n- In fact, for close to 2 decades, people could not imagine using a NN with more than 3-4 layers.\n\n\n"
+      }
+    ],
+    "expected_topics": [
+      "T28"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": true,
+    "requires_code": false,
+    "requires_multi_notebook": false,
+    "should_refuse": false,
+    "review_status": "question_accepted_by_user",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Accept",
+      "notes": "Question wording accepted in conversation. Expected answer points remain proposed until source verification."
+    },
+    "lifecycle_status": "active",
+    "expected_answer": "The update is W_new = W_old - learning_rate * dL/dW. The gradient describes how loss changes with the weight; the learning rate scales the update. Subtraction moves the weight opposite to the gradient. In notebook 31, cell 11, the Cat probability is 0.24 and its target is 1, so dZ=-0.76. For input feature 1, the corresponding weight gradient is -0.76. Starting at W=0.1 with learning rate 0.1 gives 0.1 - 0.1*(-0.76) = 0.176. This is the source’s single-example softmax/cross-entropy illustration, not a general formula that all gradients equal prediction minus target.",
+    "evidence_notes": "Use only the scalar worked example and update rule. The source contains informal matrix-derivative notation and illustrative Python list subtraction; these are not endorsed as executable code. No new dataset or numerical example was invented.",
+    "answer_key_review_status": "source_verified_pending_user_review"
+  },
+  {
+    "question_id": "Q23",
+    "question_type": "comparison",
+    "question": "When would you choose a decision tree over a random forest?",
+    "expected_answer_points": [
+      "Prefer a single decision tree when an understandable sequence of decision rules is the main requirement, subject to acceptable validated performance. This is a decision synthesis, not a quoted universal rule.",
+      "Use the employee-attrition example in notebook 16 cell 41 to explain how a tree rule can be communicated and used to investigate business action. Do not claim the observed rule establishes causation.",
+      "Explain the tradeoff: notebook 17 describes combining multiple trees to reduce variance; notebook 16 treats depth as a tunable way to avoid over/underfitting. Do not claim a single tree or forest is always more accurate.",
+      "Do not invent a measured speed, memory or accuracy advantage: the cited evidence does not establish a head-to-head runtime benchmark."
+    ],
+    "expected_sources": [
+      {
+        "notebook": "16 - Decision tree Ensemble models intro.ipynb",
+        "notebook_sha256": "0847b2f403c384506b24e27b7f55f9a2353fb2e35367181d4770d73f5e962fdf",
+        "cell_index": 41,
+        "cell_number": 42,
+        "cell_type": "markdown",
+        "section": "One of the main advantage of Decision Trees are",
+        "source_excerpt": "#### One of the main advantage of Decision Trees are\n  \nDTs are **easily interpretable**\n\n**How so?**\n\n\n  - Let's take an example:\n    - One conclusion that can be derived from above decision tree is\n      - Employees younger than 29 yrs and work overtime >= 2.5hrs are more likely to churn\n    - This can help the company take specific decisions in this direction to reduce attrition such as:\n      - Incentivise overtime\n      - Reducing workload"
+      },
+      {
+        "notebook": "16 - Decision tree Ensemble models intro.ipynb",
+        "notebook_sha256": "0847b2f403c384506b24e27b7f55f9a2353fb2e35367181d4770d73f5e962fdf",
+        "cell_index": 196,
+        "cell_number": 197,
+        "cell_type": "markdown",
+        "section": "How do we find the right depth of our DT?",
+        "source_excerpt": "### Tradeoff\n\n#### How do we find the right depth of our DT?\n\nOur goal is to -\n- not overfit outliers\n- not underfit training samples\n\n\\\nThe idea here is to -\n- treat **depth** as a hyperparameter\n- and find its optimal value."
+      },
+      {
+        "notebook": "17 - Bagging.ipynb",
+        "notebook_sha256": "b059c58d7b9f168ea0c9bdc3f7a500c169aa9f92e746d5a0a0d458ee321f8c97",
+        "cell_index": 18,
+        "cell_number": 19,
+        "cell_type": "markdown",
+        "section": "Intuition",
+        "source_excerpt": "\n### Intuition\n\nBagging stand for Bootstrapped Aggregation.\n\nWe'll come to Bootstrapping later.\n\nBut, let's see the the intuition first\n\n\n- We basically **train $k$ different models**($M_1,M_2,....M_k$) and these models are called **Base Learners**.\n\n* This is followed by **Aggregation**\n    * We use majority vote for Classification\n    * We use Mean/Median for Regression\n\nHence we see that just like DT, RF also works for both classification and regression\n\n**DO NOTE that we want all the base learners to be as different as possible.**\n"
+      },
+      {
+        "notebook": "17 - Bagging.ipynb",
+        "notebook_sha256": "b059c58d7b9f168ea0c9bdc3f7a500c169aa9f92e746d5a0a0d458ee321f8c97",
+        "cell_index": 30,
+        "cell_number": 31,
+        "cell_type": "markdown",
+        "section": "What are the properties of base learners?",
+        "source_excerpt": "The Decision tree base learners in random forest are **Deep Decision Trees (non-shallow)**.\n\nAs they are deep,\n- the models overfit slightly on a sub sample of data, as the base learners are made of $m$ rows and $d'$ columns only.\n\nNow, we perform aggregation\\averaging on these slightly overfit models (high variance and low bias)\n\n- This aggregation helps in reducing the variance of the model.\n\nBut, how? Let's see\n\n\n"
+      }
+    ],
+    "expected_topics": [
+      "T15",
+      "T16"
+    ],
+    "expected_behavior": "answer",
+    "requires_math": false,
+    "requires_code": false,
+    "requires_multi_notebook": true,
+    "should_refuse": false,
+    "review_status": "question_accepted_by_user",
+    "evidence_status": "source_cells_verified",
+    "eligible_for_full_corpus_scoring": true,
+    "user_review": {
+      "decision": "Accept",
+      "notes": "Question wording accepted in conversation. Expected answer points remain proposed until source verification."
+    },
+    "lifecycle_status": "active",
+    "expected_answer": "Choose a single decision tree when people need to understand the decision rules and its validation performance is adequate. Notebook 16 cell 41 illustrates an interpretable employee-attrition rule involving age and overtime. The tradeoff is generalization: notebook 17 cells 18 and 30 describe aggregating multiple trees and reducing variance. Notebook 16 cell 196 recommends tuning tree depth to balance overfitting and underfitting. Therefore interpretability is a supported reason to consider one tree, but the notes do not justify claiming it will always be more accurate or quantifying a speed advantage.",
+    "evidence_notes": "The choice recommendation is a synthesis across notebooks 16 and 17. Computational cost was removed as a required comparison because no verified head-to-head evidence was found in the selected cells. No statement that all random forests must contain deep trees is required.",
+    "answer_key_review_status": "source_verified_pending_user_review"
+  }
+]

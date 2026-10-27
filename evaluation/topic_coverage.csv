@@ -1,0 +1,41 @@
+topic_id,topic_name,core_questions,boundary_questions,easy,medium,hard
+T01,NumPy,8,1,0,6,3
+T02,Pandas,8,1,0,5,4
+T03,Exploratory data analysis,8,0,0,5,3
+T04,Data visualization,8,0,1,4,3
+T05,Probability,8,1,0,5,4
+T06,Machine learning workflow,8,1,0,4,5
+T07,Preprocessing and pipelines,8,1,0,3,6
+T08,Model validation and tuning,8,1,2,2,5
+T09,Generalization and regularization,8,0,1,4,3
+T10,Linear regression,8,1,0,5,4
+T11,Logistic regression,8,0,0,6,2
+T12,Classification evaluation,8,1,0,6,3
+T13,K-nearest neighbors,8,0,1,5,2
+T14,Class imbalance,8,0,1,5,2
+T15,Decision trees,8,1,1,5,3
+T16,Bagging and random forests,8,0,0,6,2
+T17,Boosting,8,0,0,6,2
+T18,Naive Bayes,8,1,1,3,5
+T19,Clustering,8,1,0,4,5
+T20,Anomaly detection,8,0,0,3,5
+T21,Dimensionality reduction,8,1,2,2,5
+T22,Time-series structure and preparation,8,0,1,4,3
+T23,Forecasting baselines and smoothing,8,0,0,6,2
+T24,Statistical forecasting,8,1,2,3,4
+T25,Association rules,8,0,1,4,3
+T26,Recommender systems,8,1,1,4,4
+T27,Neural-network foundations,8,0,0,5,3
+T28,Neural-network training,8,1,1,2,6
+T29,TensorFlow/Keras implementation,8,1,0,5,4
+T30,Autoencoders,8,0,1,4,3
+T31,CNN fundamentals and generalization,8,1,0,5,4
+T32,Transfer learning and image retrieval,8,1,1,5,3
+T33,Object detection and segmentation,8,0,0,4,4
+T34,Siamese networks and metric learning,8,0,1,4,3
+T35,Generative adversarial networks,8,0,1,2,5
+T36,Text preprocessing and lexical methods,8,0,1,3,4
+T37,Word embeddings and semantic retrieval,8,0,0,6,2
+T38,Sequence models,8,0,1,2,5
+T39,Named entity recognition,8,1,1,2,6
+T40,"Attention, Transformers and BERT",8,1,1,2,6

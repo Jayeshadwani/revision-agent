@@ -1,0 +1,185 @@
+{
+  "total_questions": 340,
+  "weights": {
+    "cognitive_operation": 0.35,
+    "retrieval_breadth": 0.25,
+    "math_demand": 0.2,
+    "ambiguity_inference": 0.2
+  },
+  "difficulty_counts": {
+    "medium": 166,
+    "hard": 150,
+    "easy": 24
+  },
+  "by_question_type": {
+    "code_explanation": {
+      "medium": 29,
+      "hard": 11
+    },
+    "code_implementation": {
+      "medium": 37,
+      "hard": 3
+    },
+    "concept_comparison": {
+      "hard": 40
+    },
+    "definition": {
+      "medium": 14,
+      "easy": 21,
+      "hard": 5
+    },
+    "error_misconception": {
+      "medium": 29,
+      "hard": 15,
+      "easy": 1
+    },
+    "formula_recall": {
+      "medium": 18,
+      "easy": 2,
+      "hard": 2
+    },
+    "math_derivation": {
+      "medium": 9,
+      "hard": 4
+    },
+    "multi_notebook_synthesis": {
+      "hard": 40
+    },
+    "refusal_partial": {
+      "hard": 17,
+      "medium": 3
+    },
+    "topic_recommendation": {
+      "medium": 27,
+      "hard": 13
+    }
+  },
+  "profiles": {
+    "recall": {
+      "cognitive_operation": 0.25,
+      "retrieval_breadth": 0.25,
+      "math_demand": 0,
+      "ambiguity_inference": 0.15,
+      "rationale": "Retrieve and restate a directly stated definition or property."
+    },
+    "explain": {
+      "cognitive_operation": 0.65,
+      "retrieval_breadth": 0.55,
+      "math_demand": 0,
+      "ambiguity_inference": 0.5,
+      "rationale": "Explain a mechanism or interpret a relationship using related evidence."
+    },
+    "formula_explain": {
+      "cognitive_operation": 0.65,
+      "retrieval_breadth": 0.5,
+      "math_demand": 0.45,
+      "ambiguity_inference": 0.4,
+      "rationale": "Explain a formula and its role without deriving it."
+    },
+    "calculation": {
+      "cognitive_operation": 0.65,
+      "retrieval_breadth": 0.5,
+      "math_demand": 0.5,
+      "ambiguity_inference": 0.4,
+      "rationale": "Apply a stated calculation or update to a worked example; no full derivation is required."
+    },
+    "compare": {
+      "cognitive_operation": 0.95,
+      "retrieval_breadth": 0.85,
+      "math_demand": 0,
+      "ambiguity_inference": 0.8,
+      "rationale": "Contrast alternatives or judge a choice using evidence for both sides."
+    },
+    "compare_math": {
+      "cognitive_operation": 0.95,
+      "retrieval_breadth": 0.85,
+      "math_demand": 0.4,
+      "ambiguity_inference": 0.8,
+      "rationale": "Compare mathematical mechanisms and their implications using evidence for both sides."
+    },
+    "derive": {
+      "cognitive_operation": 1,
+      "retrieval_breadth": 0.8,
+      "math_demand": 1,
+      "ambiguity_inference": 0.7,
+      "rationale": "Explain a multi-step mathematical argument or derive the relationship, beyond restating a formula."
+    },
+    "synthesis": {
+      "cognitive_operation": 1,
+      "retrieval_breadth": 1,
+      "math_demand": 0,
+      "ambiguity_inference": 0.85,
+      "rationale": "Combine distinct required facts from multiple notebooks into one explanation."
+    },
+    "code_retrieve": {
+      "cognitive_operation": 0.65,
+      "retrieval_breadth": 0.55,
+      "math_demand": 0,
+      "ambiguity_inference": 0.5,
+      "rationale": "Locate a suitable source implementation and explain its required inputs and use."
+    },
+    "code_interpret": {
+      "cognitive_operation": 0.65,
+      "retrieval_breadth": 0.55,
+      "math_demand": 0,
+      "ambiguity_inference": 0.55,
+      "rationale": "Interpret behavior of a source code excerpt and connect parameters to outputs."
+    },
+    "code_integrate": {
+      "cognitive_operation": 0.95,
+      "retrieval_breadth": 0.9,
+      "math_demand": 0.1,
+      "ambiguity_inference": 0.85,
+      "rationale": "Explain or assemble interacting processing/training components and their data flow."
+    },
+    "diagnose": {
+      "cognitive_operation": 0.95,
+      "retrieval_breadth": 0.85,
+      "math_demand": 0,
+      "ambiguity_inference": 0.85,
+      "rationale": "Diagnose an indirect cause or evaluate a conditional decision rather than restating a warning."
+    },
+    "recommend": {
+      "cognitive_operation": 0.75,
+      "retrieval_breadth": 0.65,
+      "math_demand": 0,
+      "ambiguity_inference": 0.65,
+      "rationale": "Select two related topics and justify direct supported links; no prerequisite ordering is requested."
+    },
+    "recommend_graph": {
+      "cognitive_operation": 0.95,
+      "retrieval_breadth": 0.9,
+      "math_demand": 0,
+      "ambiguity_inference": 0.85,
+      "rationale": "Choose across alternative topic relationships and justify a learning-oriented connection."
+    },
+    "partial": {
+      "cognitive_operation": 0.95,
+      "retrieval_breadth": 0.9,
+      "math_demand": 0.1,
+      "ambiguity_inference": 0.85,
+      "rationale": "Separate a supported explanation from unavailable evidence or missing user inputs."
+    },
+    "partial_math": {
+      "cognitive_operation": 1,
+      "retrieval_breadth": 0.9,
+      "math_demand": 0.9,
+      "ambiguity_inference": 0.9,
+      "rationale": "Assess mathematical coverage and distinguish supported steps from an unsupported proof or guarantee."
+    },
+    "refuse": {
+      "cognitive_operation": 0.65,
+      "retrieval_breadth": 0.6,
+      "math_demand": 0,
+      "ambiguity_inference": 0.65,
+      "rationale": "Recognize that a requested fact is unsupported and abstain; do not generate it from general knowledge."
+    },
+    "refuse_proof": {
+      "cognitive_operation": 1,
+      "retrieval_breadth": 0.9,
+      "math_demand": 1,
+      "ambiguity_inference": 0.85,
+      "rationale": "Judge support for a requested multi-step coverage proof and abstain if it is absent."
+    }
+  }
+}
