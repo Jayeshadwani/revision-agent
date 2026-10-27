@@ -1,6 +1,6 @@
 # Response templates and success criteria
 
-This file defines how the agent must format each answer and how each answer is scored. Every record in `golden_set.jsonl` names its template in `answer_template` and lists its `required_sections` and `optional_sections`; those values come from the table in §2.
+This file defines how the agent must format each answer and how each answer is scored. Every record in `golden_set.jsonl` and `retrieval_set.jsonl` names its template in `answer_template` and lists its `required_sections` and `optional_sections`; those values come from the table in §2.
 
 ## 1. Universal rules
 
@@ -389,7 +389,7 @@ Diagnose a failure by checking retrieval first. If the required evidence never r
 
 ### 4.4 v1 quality gate
 
-The baseline isn't complete until it meets all of these on the completed questions (those with an answer key and sources; see `scripts/eval_report.py`):
+The baseline isn't complete until it meets all of these on the golden set:
 
 | Criterion | v1 target |
 |---|---:|

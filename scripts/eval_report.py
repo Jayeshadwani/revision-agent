@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 """
-Validate and summarise the evaluation set, or export it as CSV.
+Validate and summarise the evaluation sets, or export one as CSV.
+
+    evaluation/golden_set.jsonl     20 fully keyed samples (answer + sources); must all be complete
+    evaluation/retrieval_set.jsonl  320 questions for retrieval evaluation; answer keys come later
 
 Usage (from the project root):
-    python scripts/eval_report.py              # counts by difficulty, type, template, completeness
-    python scripts/eval_report.py --check      # schema validation; exits 1 on errors
-    python scripts/eval_report.py --csv x.csv  # flat CSV ('|' separates list items)
+    python scripts/eval_report.py                          # summary of both sets
+    python scripts/eval_report.py --set golden             # summary of one set
+    python scripts/eval_report.py --check                  # validate both; exits 1 on errors
+    python scripts/eval_report.py --set retrieval --csv x.csv   # flat CSV ('|' separates list items)
 
-Everything is derived from evaluation/golden_set.jsonl, so no summary files are committed.
+Everything is derived from the JSONL files, so no summary files are committed.
 """
 from __future__ import annotations
 
@@ -19,7 +23,10 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-GOLDEN = ROOT / "evaluation" / "golden_set.jsonl"
+SETS = {
+    "golden": ROOT / "evaluation" / "golden_set.jsonl",
+    "retrieval": ROOT / "evaluation" / "retrieval_set.jsonl",
+}
 
 QUESTION_TYPES = {
     "definition", "formula_recall", "math_derivation", "concept_explanation", "comparison",
@@ -44,7 +51,7 @@ REQUIREMENTS = [
 ]
 
 
-def load(path: Path = GOLDEN) -> list[dict]:
+def load(path: Path) -> list[dict]:
     with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
 
@@ -119,17 +126,23 @@ def validate(q: dict) -> list[str]:
     return e
 
 
-def check(qs: list[dict]) -> int:
-    errors = [f"duplicate id {i}" for i, n in Counter(q["question_id"] for q in qs).items() if n > 1]
-    for q in qs:
-        errors += validate(q)
+def check(sets: dict[str, list[dict]]) -> int:
+    all_qs = [q for qs in sets.values() for q in qs]
+    errors = [f"duplicate id {i} (across sets)" for i, n in
+              Counter(q["question_id"] for q in all_qs).items() if n > 1]
+    for name, qs in sets.items():
+        for q in qs:
+            errors += [f"[{name}] {e}" for e in validate(q)]
+            if name == "golden" and not is_complete(q):
+                errors.append(f"[golden] {q['question_id']}: golden samples need an answer key and sources")
     if errors:
         print("\n".join(errors))
-        print(f"\n{len(errors)} schema errors")
+        print(f"\n{len(errors)} errors")
         return 1
-    done = sum(is_complete(q) for q in qs)
-    print(f"OK: {len(qs)} records valid. {done} complete (answer key + sources), "
-          f"{len(qs) - done} pending answer key or source evidence.")
+    for name, qs in sets.items():
+        done = sum(is_complete(q) for q in qs)
+        print(f"OK [{name}]: {len(qs)} records valid, {done} with answer key + sources, "
+              f"{len(qs) - done} pending.")
     return 0
 
 
@@ -195,16 +208,22 @@ def export_csv(qs: list[dict], out: Path) -> None:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--set", choices=sorted(SETS), help="limit to one set (default: both)")
     ap.add_argument("--check", action="store_true", help="validate the schema")
-    ap.add_argument("--csv", type=Path, help="export a flat CSV to this path")
+    ap.add_argument("--csv", type=Path, help="export a flat CSV of --set to this path")
     args = ap.parse_args()
 
-    qs = load()
+    names = [args.set] if args.set else list(SETS)
+    sets = {n: load(SETS[n]) for n in names}
     if args.check:
-        return check(qs)
+        return check(sets)
     if args.csv:
-        export_csv(qs, args.csv)
-    else:
+        if not args.set:
+            ap.error("--csv needs --set golden or --set retrieval")
+        export_csv(sets[args.set], args.csv)
+        return 0
+    for i, (name, qs) in enumerate(sets.items()):
+        print(("\n" if i else "") + f"=== {name} set ({SETS[name].name}) ===")
         summary(qs)
     return 0
 

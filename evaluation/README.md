@@ -1,18 +1,29 @@
-# Evaluation set
+# Evaluation sets
 
-`golden_set.jsonl` is the single source of truth: 340 test cases (schema `v1`), one JSON object per line. They break down into 320 topic questions (8 for each of the 40 topics, IDs `T01-01` … `T40-08`) and 20 boundary cases (`B01` … `B20`), which test partial answers and refusals.
+There are two files, both in the same `v1` schema, one JSON object per line:
+
+| File | Records | Purpose | Answer keys |
+|---|---:|---|---|
+| `golden_set.jsonl` | 20 | End-to-end evaluation of retrieval and generation (answer, format, citations, refusal) | Complete: `key_points` plus verified `expected_sources` (refusals have no sources) |
+| `retrieval_set.jsonl` | 320 | Retrieval-quality evaluation across all 40 topics | Deferred; `expected_answer` and `expected_sources` filled later |
+
+The golden set is the first reviewed batch: 15 topic questions plus boundary cases `B01`–`B05`. The retrieval set holds the other topic questions (`T01-01` … `T40-08`) and boundary cases `B06`–`B20`. A question moves from the retrieval set to the golden set once its answer key and sources are verified.
 
 [`response_templates.md`](response_templates.md) defines how the agent must format each answer and how answers are scored.
 
 ```bash
-python scripts/eval_report.py              # counts by difficulty, type, template, topic, completeness
-python scripts/eval_report.py --check      # schema validation (exits 1 on errors)
-python scripts/eval_report.py --csv x.csv  # flat CSV for a spreadsheet ('|' separates list items)
+python scripts/eval_report.py                        # summary of both sets
+python scripts/eval_report.py --set golden           # one set only
+python scripts/eval_report.py --check                # validate both (exits 1 on errors)
+python scripts/eval_report.py --set retrieval --csv x.csv   # flat CSV ('|' separates list items)
 ```
 
 ## Status
 
-All 340 records pass schema validation. **20 are complete**, meaning they have an answer key and source cells (or are refusals with an answer key). The other 320 still need `expected_answer` and `expected_sources` filled in before they can be scored. `expected_chunk_ids` is empty everywhere until the chunk index exists. Refusal labels stay provisional until corpus absence has also been checked against image content.
+- **Golden set:** all 20 records are complete. It has no `code_explanation` or `multi_notebook_synthesis` samples yet.
+- **Retrieval set:** all 320 records are schema-valid, but none has an answer key or source cells yet. Until `expected_sources` (and later `expected_chunk_ids`) are filled in, these questions can only be used for manual inspection of what retrieval returns, not for scored recall@k.
+- `expected_chunk_ids` is empty in both sets until the chunk index exists.
+- Refusal labels stay provisional until corpus absence has also been checked against image content.
 
 ## Record schema
 
@@ -74,7 +85,7 @@ All 340 records pass schema validation. **20 are complete**, meaning they have a
 - `requires_multi_notebook` with sources needs at least two distinct `notebook_id`s.
 - Every non-refusal template requires `sources`, and no section is both required and optional.
 
-A record with no answer key or no sources is valid but incomplete. The report counts these separately rather than treating them as errors.
+In the retrieval set, a record with no answer key or no sources is valid but incomplete; the report counts these separately. In the golden set, every record must be complete, so `--check` treats an incomplete golden record as an error.
 
 ## Question types per topic
 
@@ -100,7 +111,7 @@ easy < 0.40 ≤ medium < 0.70 ≤ hard
 
 Only the final score is stored, not the individual factor values. Retrieval breadth is estimated, because chunking isn't built yet, so re-score a question if evidence mapping changes what it needs. The current split (24 easy / 166 medium / 150 hard) leans hard because the set deliberately includes many comparison and synthesis questions.
 
-## Completing a question (before it is scored)
+## Completing a question (to promote it to the golden set)
 
 1. Map it to exact notebook cells in `expected_sources`.
 2. Write `summary` and `key_points`, keeping stated facts separate from bounded deductions.
