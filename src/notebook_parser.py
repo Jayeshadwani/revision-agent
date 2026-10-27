@@ -28,7 +28,7 @@ from pydantic import BaseModel
 
 import config
 
-try:  # nbformat is preferred; fall back to a strict JSON reader if it is not installed
+try:  # optional: used only to validate against the nbformat schema (non-fatal)
     import nbformat
 except ImportError:  # pragma: no cover - depends on the environment
     nbformat = None
@@ -150,7 +150,7 @@ class NotebookRecord(BaseModel):
     nbformat: str
     parse_status: Literal["success", "failed"]
     parse_error: str = ""
-    reader: str = ""                 # nbformat | json
+    reader: str = ""                 # json, plus the nbformat validation outcome when nbformat is installed
     total_cells: int = 0
     markdown_cells: int = 0
     code_cells: int = 0
@@ -534,11 +534,26 @@ def _text_output(kind: str, content_type: str, text: str, mimes: list[str], stre
 # Reading
 # ----------------------------------------------------------------------------
 def read_notebook(path: Path) -> tuple[dict, str]:
-    """Return (notebook dict, reader name). Raises ValueError on a malformed notebook."""
-    if nbformat is not None:
-        nb = nbformat.read(str(path), as_version=4)
-        nbformat.validate(nb)
-        return json.loads(nbformat.writes(nb)), "nbformat"
+    """Return (notebook dict, reader name). Raises ValueError on a malformed notebook.
+
+    The notebook is always read as JSON with structural checks, so every machine produces the same
+    records whether or not nbformat is installed. When nbformat is installed its schema validation
+    also runs, but a schema complaint does not fail the notebook: Colab writes keys the nbformat
+    schema rejects (`metadata` on stream outputs, `errorDetails` on errors), and those notebooks
+    are otherwise fine. The reader name records the outcome.
+    """
+    nb = _read_json_notebook(path)
+    if nbformat is None:
+        return nb, "json"
+    try:
+        nbformat.validate(nbformat.from_dict(nb))
+        return nb, "json (nbformat-valid)"
+    except Exception as e:                       # nbformat.ValidationError and friends
+        reason = str(e).split("\n", 1)[0][:80]
+        return nb, f"json (nbformat schema warning: {reason})"
+
+
+def _read_json_notebook(path: Path) -> dict:
     with path.open(encoding="utf-8") as f:
         nb = json.load(f)
     if nb.get("nbformat") != 4:
@@ -550,7 +565,7 @@ def read_notebook(path: Path) -> tuple[dict, str]:
             raise ValueError(f"cell {i}: unknown cell_type {cell.get('cell_type')!r}")
         if "source" not in cell:
             raise ValueError(f"cell {i}: missing 'source'")
-    return nb, "json"
+    return nb
 
 
 def notebook_identity(path: Path) -> tuple[str, str]:
