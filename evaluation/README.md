@@ -2,6 +2,8 @@
 
 `questions.jsonl` is the single source of truth: 340 questions, one JSON object per line. These break down into 320 topic questions (8 for each of the 40 topics, IDs `T01-01` … `T40-08`) and 20 boundary cases (`B01` … `B20`) that test partial answers and refusals.
 
+How the agent must format and how answers are scored is defined in [`response_templates.md`](response_templates.md).
+
 Counts, per-topic coverage and CSV exports are generated from this file rather than committed:
 
 ```bash
