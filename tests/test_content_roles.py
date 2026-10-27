@@ -262,7 +262,18 @@ class Labels(unittest.TestCase):
 CELLS = config.PROCESSED_DIR / config.CELLS_JSONL
 
 
-@unittest.skipUnless(CELLS.exists(), "data/processed/cells.jsonl not built")
+def corpus_state() -> str:
+    """'' when data/processed was built by the current pipeline, else why the corpus tests skip."""
+    if not CELLS.exists():
+        return "data/processed/cells.jsonl not built"
+    with CELLS.open(encoding="utf-8") as f:
+        first = json.loads(f.readline() or "{}")
+    if "content_role" not in first or not (config.PROCESSED_DIR / crc.SPANS_JSONL).exists():
+        return "data/processed is from an older pipeline (no content roles); run: python src/ingestion.py"
+    return ""
+
+
+@unittest.skipIf(corpus_state(), corpus_state())
 class Corpus(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
