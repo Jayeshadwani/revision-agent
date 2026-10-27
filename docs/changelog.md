@@ -1,5 +1,24 @@
 # Changelog
 
+## phase4 — PH4-RETRIEVE-001 (issue #9): hybrid retrieval and retrieval evaluation (2026-10-27)
+
+- New modules:
+  - `src/bm25_index.py`: pure-Python Okapi BM25 with an identifier-preserving tokenizer.
+  - `src/hybrid_fusion.py`: RRF with k = 60.
+  - `src/retrieval.py`: dense / BM25 / hybrid modes, filters, a safety guard, tool and resource
+    attachment, and a QA CLI.
+  - `src/retrieval_eval.py`: metrics, categories, filter probes, the default-mode decision and the
+    report.
+  - See `docs/retrieval.md`.
+- New labelled set `evaluation/retrieval_qa_set.jsonl`: 30 prompts (10 concept, 5 math, 5 tool,
+  5 broad short, 5 multi-notebook), with expected cells taken from the notebook sections.
+- The default mode is decided by measurement. `hybrid_rrf` is adopted only if it beats dense on
+  Recall@5 or MRR without losing on either; until that is measured, the default is `dense`.
+- BM25-only baseline, 47 scored prompts: Recall@5 0.651, Recall@10 0.725, MRR 0.560, Hit@1 0.383.
+  0 filter or exclusion violations.
+- Tests: `tests/test_hybrid_fusion.py` (11) and `tests/test_retrieval.py` (16). Dense search is
+  tested on the in-memory index with a deterministic embedder.
+
 ## Track the offline role labels (2026-10-27)
 
 - `data/labels/role_labels.jsonl` is now in the repo (a `.gitignore` exception). It holds the 51
