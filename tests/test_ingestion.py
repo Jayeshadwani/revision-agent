@@ -14,6 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
@@ -211,3 +212,52 @@ class CorpusTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ColabSchemaQuirks(unittest.TestCase):
+    """Colab writes keys the nbformat schema rejects; such notebooks must still parse, identically
+    with or without nbformat installed (nb_18 and nb_35 failed on a machine with nbformat)."""
+
+    NB = {"nbformat": 4, "nbformat_minor": 0, "metadata": {}, "cells": [
+        {"cell_type": "markdown", "metadata": {}, "source": "# Fitting"},
+        {"cell_type": "code", "metadata": {}, "execution_count": 1, "source": "search.fit(X, y)", "outputs": [
+            {"output_type": "stream", "name": "stdout", "metadata": {"tags": None},
+             "text": "Fitting 3 folds for each of 10 candidates\n"}]},
+        {"cell_type": "code", "metadata": {}, "execution_count": 2, "source": "import missing_pkg", "outputs": [
+            {"output_type": "error", "ename": "ModuleNotFoundError", "evalue": "No module named 'missing_pkg'",
+             "traceback": [], "errorDetails": {"actions": [{"action": "open_url"}]}}]},
+    ]}
+
+    def parse(self):
+        import tempfile
+        from notebook_parser import parse_notebook
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "18 - Boosting.ipynb"
+            path.write_text(json.dumps(self.NB), encoding="utf-8")
+            return parse_notebook(path)
+
+    def test_parses_without_nbformat(self):
+        import notebook_parser
+        with mock.patch.object(notebook_parser, "nbformat", None):
+            record, cells = self.parse()
+        self.assertEqual((record.parse_status, len(cells), record.reader), ("success", 3, "json"))
+
+    def test_schema_complaint_is_not_fatal(self):
+        import notebook_parser
+
+        class StrictNbformat:
+            @staticmethod
+            def from_dict(d):
+                return d
+
+            @staticmethod
+            def validate(nb):
+                raise ValueError("Additional properties are not allowed ('metadata' was unexpected)")
+        with mock.patch.object(notebook_parser, "nbformat", None):
+            plain = self.parse()
+        with mock.patch.object(notebook_parser, "nbformat", StrictNbformat):
+            record, cells = self.parse()
+        self.assertEqual(record.parse_status, "success")
+        self.assertTrue(record.reader.startswith("json (nbformat schema warning"))
+        self.assertEqual([c.model_dump(exclude={"ingested_at"}) for c in cells],
+                         [c.model_dump(exclude={"ingested_at"}) for c in plain[1]])
