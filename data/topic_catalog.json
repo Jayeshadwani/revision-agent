@@ -1,0 +1,260 @@
+{
+  "version": "v1",
+  "notebooks": {
+    "nb_01": "Food Delivery Data Exploration and analysis 1",
+    "nb_02": "Food Delivery Data Exploration and analysis 2",
+    "nb_03": "Food Delivery Data Exploration and analysis 3",
+    "nb_04": "Food Delivery Data Exploration and analysis 4",
+    "nb_05": "Amazon sales data analysis 1",
+    "nb_06": "Amazon sales data analysis 2",
+    "nb_07": "Amazon sales data analysis 3",
+    "nb_08": "Analyzing Sachin Tendulkars ODI Career",
+    "nb_09": "Intro to ML enginnering and Linear regression 1",
+    "nb_10": "Linear regression 2",
+    "nb_11": "Linear regression 3",
+    "nb_12": "Sklearn Pipelines",
+    "nb_13": "Logistc regression 1",
+    "nb_14": "Classification metrics",
+    "nb_15": "KNN",
+    "nb_16": "Decision tree Ensemble models intro",
+    "nb_17": "Bagging",
+    "nb_18": "Boosting",
+    "nb_19": "Naive bayes",
+    "nb_20": "Intro to clustering and K-means",
+    "nb_21": "Kmeans  and Hierarchical clustering",
+    "nb_22": "GMM  DBSCAN",
+    "nb_23": "Anamoly detection",
+    "nb_24": "PCA and TSNE",
+    "nb_25": "Timeseries 1",
+    "nb_26": "Timeseries 2",
+    "nb_27": "Timeseries 3",
+    "nb_28": "Recommendation systems 1",
+    "nb_29": "Recommendation systems 2",
+    "nb_30": "Neural network 1",
+    "nb_31": "Neural network 2",
+    "nb_32": "TF-keras Pytorch 1",
+    "nb_33": "TF-keras Pytorch 2",
+    "nb_34": "Neural network 3",
+    "nb_35": "Auto Encoders",
+    "nb_36": "Intro to CV and CNN Fundamentals",
+    "nb_37": "Tackling Overfitting in CNN",
+    "nb_38": "Transfer learning 1",
+    "nb_39": "Image Similarity  Understanding Embeddings",
+    "nb_40": "Object localization and detection 1",
+    "nb_41": "Object localization and detection 2",
+    "nb_42": "Object segmentation",
+    "nb_43": "Siamese network",
+    "nb_44": "GANs for Image Generation",
+    "nb_45": "Text Pre-Processing NLTKspaCy",
+    "nb_46": "Word Embedding",
+    "nb_47": "Lexicon-Based Sentiment  Topic Modeling",
+    "nb_48": "RNN",
+    "nb_49": "LSTM",
+    "nb_50": "NER",
+    "nb_51": "Attention",
+    "nb_52": "Transformers",
+    "nb_53": "Pre-trained Models BERT"
+  },
+  "topics": [
+    {
+      "topic_id": "T01",
+      "topic_name": "NumPy",
+      "notebook_ids": ["nb_01", "nb_02", "nb_03"]
+    },
+    {
+      "topic_id": "T02",
+      "topic_name": "Pandas",
+      "notebook_ids": ["nb_04", "nb_05", "nb_06"]
+    },
+    {
+      "topic_id": "T03",
+      "topic_name": "Exploratory data analysis",
+      "notebook_ids": ["nb_01", "nb_04", "nb_05", "nb_06", "nb_07"]
+    },
+    {
+      "topic_id": "T04",
+      "topic_name": "Data visualization",
+      "notebook_ids": ["nb_06", "nb_07"]
+    },
+    {
+      "topic_id": "T05",
+      "topic_name": "Probability",
+      "notebook_ids": ["nb_08"]
+    },
+    {
+      "topic_id": "T06",
+      "topic_name": "Machine learning workflow",
+      "notebook_ids": ["nb_09"]
+    },
+    {
+      "topic_id": "T07",
+      "topic_name": "Preprocessing and pipelines",
+      "notebook_ids": ["nb_11", "nb_12"]
+    },
+    {
+      "topic_id": "T08",
+      "topic_name": "Model validation and tuning",
+      "notebook_ids": ["nb_11", "nb_12", "nb_17"]
+    },
+    {
+      "topic_id": "T09",
+      "topic_name": "Generalization and regularization",
+      "notebook_ids": ["nb_11", "nb_12"]
+    },
+    {
+      "topic_id": "T10",
+      "topic_name": "Linear regression",
+      "notebook_ids": ["nb_09", "nb_10", "nb_11"]
+    },
+    {
+      "topic_id": "T11",
+      "topic_name": "Logistic regression",
+      "notebook_ids": ["nb_13"]
+    },
+    {
+      "topic_id": "T12",
+      "topic_name": "Classification evaluation",
+      "notebook_ids": ["nb_13", "nb_14"]
+    },
+    {
+      "topic_id": "T13",
+      "topic_name": "K-nearest neighbors",
+      "notebook_ids": ["nb_15"]
+    },
+    {
+      "topic_id": "T14",
+      "topic_name": "Class imbalance",
+      "notebook_ids": ["nb_15"]
+    },
+    {
+      "topic_id": "T15",
+      "topic_name": "Decision trees",
+      "notebook_ids": ["nb_16"]
+    },
+    {
+      "topic_id": "T16",
+      "topic_name": "Bagging and random forests",
+      "notebook_ids": ["nb_17"]
+    },
+    {
+      "topic_id": "T17",
+      "topic_name": "Boosting",
+      "notebook_ids": ["nb_18"]
+    },
+    {
+      "topic_id": "T18",
+      "topic_name": "Naive Bayes",
+      "notebook_ids": ["nb_19"]
+    },
+    {
+      "topic_id": "T19",
+      "topic_name": "Clustering",
+      "notebook_ids": ["nb_20", "nb_21", "nb_22"]
+    },
+    {
+      "topic_id": "T20",
+      "topic_name": "Anomaly detection",
+      "notebook_ids": ["nb_23"]
+    },
+    {
+      "topic_id": "T21",
+      "topic_name": "Dimensionality reduction",
+      "notebook_ids": ["nb_24"]
+    },
+    {
+      "topic_id": "T22",
+      "topic_name": "Time-series structure and preparation",
+      "notebook_ids": ["nb_25"]
+    },
+    {
+      "topic_id": "T23",
+      "topic_name": "Forecasting baselines and smoothing",
+      "notebook_ids": ["nb_26"]
+    },
+    {
+      "topic_id": "T24",
+      "topic_name": "Statistical forecasting",
+      "notebook_ids": ["nb_26", "nb_27"]
+    },
+    {
+      "topic_id": "T25",
+      "topic_name": "Association rules",
+      "notebook_ids": ["nb_28"]
+    },
+    {
+      "topic_id": "T26",
+      "topic_name": "Recommender systems",
+      "notebook_ids": ["nb_28", "nb_29", "nb_35", "nb_47"]
+    },
+    {
+      "topic_id": "T27",
+      "topic_name": "Neural-network foundations",
+      "notebook_ids": ["nb_30", "nb_31"]
+    },
+    {
+      "topic_id": "T28",
+      "topic_name": "Neural-network training",
+      "notebook_ids": ["nb_31", "nb_34"]
+    },
+    {
+      "topic_id": "T29",
+      "topic_name": "TensorFlow/Keras implementation",
+      "notebook_ids": ["nb_32", "nb_33"]
+    },
+    {
+      "topic_id": "T30",
+      "topic_name": "Autoencoders",
+      "notebook_ids": ["nb_35"]
+    },
+    {
+      "topic_id": "T31",
+      "topic_name": "CNN fundamentals and generalization",
+      "notebook_ids": ["nb_36", "nb_37"]
+    },
+    {
+      "topic_id": "T32",
+      "topic_name": "Transfer learning and image retrieval",
+      "notebook_ids": ["nb_38", "nb_39"]
+    },
+    {
+      "topic_id": "T33",
+      "topic_name": "Object detection and segmentation",
+      "notebook_ids": ["nb_40", "nb_41", "nb_42"]
+    },
+    {
+      "topic_id": "T34",
+      "topic_name": "Siamese networks and metric learning",
+      "notebook_ids": ["nb_43"]
+    },
+    {
+      "topic_id": "T35",
+      "topic_name": "Generative adversarial networks",
+      "notebook_ids": ["nb_44"]
+    },
+    {
+      "topic_id": "T36",
+      "topic_name": "Text preprocessing and lexical methods",
+      "notebook_ids": ["nb_45", "nb_47"]
+    },
+    {
+      "topic_id": "T37",
+      "topic_name": "Word embeddings and semantic retrieval",
+      "notebook_ids": ["nb_33", "nb_46"]
+    },
+    {
+      "topic_id": "T38",
+      "topic_name": "Sequence models",
+      "notebook_ids": ["nb_48", "nb_49"]
+    },
+    {
+      "topic_id": "T39",
+      "topic_name": "Named entity recognition",
+      "notebook_ids": ["nb_45", "nb_50", "nb_53"]
+    },
+    {
+      "topic_id": "T40",
+      "topic_name": "Attention, Transformers and BERT",
+      "notebook_ids": ["nb_51", "nb_52", "nb_53"]
+    }
+  ]
+}

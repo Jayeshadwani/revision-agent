@@ -1,6 +1,8 @@
 .venv/
 __pycache__/
 .DS_Store
-data/
+# data/ stays local (raw notebooks, chunks); only the topic catalog is tracked
+data/*
+!data/topic_catalog.json
 index/
 adapters/
