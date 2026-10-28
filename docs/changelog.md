@@ -1,5 +1,25 @@
 # Changelog
 
+## phase5 — PH5-RETRIEVE-002 Gate A (issue #11): parent retrieval and reranker design (2026-10-28)
+
+- Gate A only. No model download, no paid calls, no re-embedding, no default change. See
+  `docs/ph5_parent_rerank_gate_a.md`.
+- `src/parent_retrieval.py`: child → parent hierarchy with safe expansion. Parents are the existing
+  Concept/Tool chunks; children are ≤128 or ≤256-token windows with versioned IDs.
+  - Expansion fails closed on a missing or stale parent and re-checks filters on the parent.
+  - Only eligible segments are serialized; dedup keeps provenance.
+  - Budgets are reported, never silently applied.
+  - Also includes the adapter for the PR #12 fixtures.
+- `src/reranker.py`: `safe_rerank`, which falls back to the baseline order on a timeout, error,
+  OOM, partial batch or invalid scores, and orders deterministically. The cross-encoder loads from
+  a local directory only.
+- `src/parent_experiment.py`: offline keyword comparison of baseline vs child-128/256 → parent on
+  the 47 labelled prompts, with a fixed dev/test split.
+  - Child-128: Recall@10 0.725 → 0.798, MRR flat.
+  - Candidate Recall@50 0.973 → 0.931.
+- Tests: `tests/test_parent_retrieval.py` (31, including fixture cases E01–E20) and
+  `tests/test_reranker.py` (14).
+
 ## phase4 — PH4-RETRIEVE-001 (issue #9): hybrid retrieval and retrieval evaluation (2026-10-27)
 
 - New modules:
